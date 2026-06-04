@@ -3,6 +3,10 @@
  * Toxic Market — API Endpoints
  */
 
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
@@ -45,7 +49,11 @@ try {
             if (strlen($password) < 6) throw new Exception('Password must be at least 6 characters', 400);
             if (!$accept_disclaimer) throw new Exception('You must accept the disclaimer', 400);
             
-            $user = registerWithEmail($email, $password, $display_name);
+            try {
+                $user = registerWithEmail($email, $password, $display_name);
+            } catch (Exception $e) {
+                throw new Exception('Registration failed: ' . $e->getMessage(), 500);
+            }
             if (!$user) throw new Exception('Email already registered', 409);
             
             echo json_encode(['success' => true, 'user' => $user]);

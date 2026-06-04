@@ -17,7 +17,9 @@ function isLoggedIn(): bool {
 function currentUser(): ?array {
     if (!isLoggedIn()) return null;
     $db = getDB();
-    return $db->prepare('SELECT * FROM users WHERE id = ?')->fetch([$_SESSION['user_id']]);
+    $stmt = $db->prepare('SELECT * FROM users WHERE id = ?');
+    $stmt->execute([$_SESSION['user_id']]);
+    return $stmt->fetch() ?: null;
 }
 
 function requireAuth(): array {
@@ -51,10 +53,12 @@ function loginWithNostr(string $pubkey): ?array {
     $user = $stmt->fetch();
     
     if (!$user) {
-        // Auto-create user from Nostr
         $stmt = $db->prepare('INSERT INTO users (nostr_pubkey, display_name) VALUES (?, ?)');
         $stmt->execute([$pubkey, 'nostr_' . substr($pubkey, 0, 8)]);
-        $user = $db->prepare('SELECT * FROM users WHERE id = ?')->fetch([$db->lastInsertId()]);
+        $userId = $db->lastInsertId();
+        $stmt = $db->prepare('SELECT * FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
     }
     
     $_SESSION['user_id'] = $user['id'];
@@ -65,7 +69,6 @@ function loginWithNostr(string $pubkey): ?array {
 function registerWithEmail(string $email, string $password, string $displayName): ?array {
     $db = getDB();
     
-    // Check if email exists
     $stmt = $db->prepare('SELECT id FROM users WHERE email = ?');
     $stmt->execute([$email]);
     if ($stmt->fetch()) return null;
@@ -74,7 +77,11 @@ function registerWithEmail(string $email, string $password, string $displayName)
     $stmt = $db->prepare('INSERT INTO users (email, display_name, password_hash) VALUES (?, ?, ?)');
     $stmt->execute([$email, $displayName, $hash]);
     
-    $user = $db->prepare('SELECT * FROM users WHERE id = ?')->fetch([$db->lastInsertId()]);
+    $userId = $db->lastInsertId();
+    $stmt = $db->prepare('SELECT * FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+    
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['auth_method'] = 'email';
     return $user;

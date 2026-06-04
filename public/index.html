@@ -8,13 +8,14 @@
     <meta property="og:title" content="Toxic Market — MX12ART Sammelkarten">
     <meta property="og:description" content="Die dedizierte Auktionsplattform für Toxic Booster Karten. Genesis Edition 2025 & Zitadelle Edition 2026.">
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ml-bets.com/toxic-market/">
     <link rel="icon" href="/toxic-market/favicon.svg" type="image/svg+xml">
     <link href="/toxic-market/css/toxic.css" rel="stylesheet">
 </head>
 <body>
     <nav id="nav">
         <div class="nav-inner">
-            <a href="/" class="logo">
+            <a href="/toxic-market/" class="logo">
                 <span class="logo-icon">🧪</span>
                 <span class="logo-text">Toxic Market</span>
             </a>
@@ -22,9 +23,11 @@
                 <a href="/toxic-market/#cards">Karten</a>
                 <a href="/toxic-market/#listings">Kaufen</a>
                 <a href="/toxic-market/#auctions">Auktionen</a>
+                <a href="/toxic-market/create" id="create-listing-btn" class="btn btn-primary btn-sm hidden" style="text-decoration:none;">🏷️ Verkaufen</a>
                 <button id="login-btn" class="btn btn-outline" onclick="showAuth()">Anmelden</button>
-                <div id="user-menu" class="hidden">
-                    <span id="user-name"></span>
+                <div id="user-menu" class="hidden" style="display:flex;align-items:center;gap:10px;">
+                    <a href="/toxic-market/create" class="btn btn-primary btn-sm" style="text-decoration:none;">🏷️ Verkaufen</a>
+                    <span id="user-name" style="color:var(--accent);font-weight:600;font-size:14px;"></span>
                     <button class="btn btn-sm" onclick="logout()">Abmelden</button>
                 </div>
             </div>
@@ -35,11 +38,11 @@
     <section id="hero">
         <div class="container">
             <h1>Toxic Market</h1>
-            <p class="subtitle">Die Bitcoin-Auktionsplattform für <strong>MX12ART Toxic Booster</strong> Sammelkarten</p>
+            <p class="subtitle">Die Bitcoin-Plattform für <strong>MX12ART Toxic Booster</strong> Sammelkarten</p>
             <div class="hero-stats">
                 <div class="stat"><span class="stat-num" id="stat-cards">63</span><span class="stat-label">Karten</span></div>
                 <div class="stat"><span class="stat-num" id="stat-total">13.440</span><span class="stat-label">Gesamtauflage</span></div>
-                <div class="stat"><span class="stat-num" id="stat-listings">0</span><span class="stat-label">Aktiv</span></div>
+                <div class="stat"><span class="stat-num" id="stat-listings">0</span><span class="stat-label">Angebote</span></div>
             </div>
             <div class="generations">
                 <a href="#cards" class="gen-card" data-gen="1">
@@ -64,7 +67,7 @@
     <!-- Cards Browser -->
     <section id="cards" class="section">
         <div class="container">
-            <h2>Karten-Browser</h2>
+            <h2>🃏 Karten-Browser</h2>
             <div class="filter-bar">
                 <button class="filter-btn active" data-gen="all">Alle</button>
                 <button class="filter-btn" data-gen="1">Genesis 2025</button>
@@ -81,7 +84,10 @@
     <!-- Active Listings -->
     <section id="listings" class="section section-alt">
         <div class="container">
-            <h2>Kaufen</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+                <h2 style="margin:0;">🏷️ Kaufen</h2>
+                <a href="/toxic-market/create" class="btn btn-primary btn-sm" id="create-listing-btn-2" style="display:none;">+ Angebot erstellen</a>
+            </div>
             <div id="listings-grid" class="listings-grid">
                 <p class="empty">Noch keine Angebote. <a href="#" onclick="showCreateListing()">Erstelle das Erste!</a></p>
             </div>
@@ -161,7 +167,7 @@
                 <div class="form-group disclaimer-check">
                     <label class="checkbox-label">
                         <input type="checkbox" id="reg-disclaimer" required>
-                        <span>Ich verstehe, dass Toxic Market ein reiner V<strong>er</strong>mittlungsplatz ist. Der Betreiber verwahrt kein Geld und übernimmt keine Haftung für Transaktionen. Ich handle auf eigenes Risiko.</span>
+                        <span>Ich verstehe, dass Toxic Market ein reiner <strong>Vermittlungsplatz</strong> ist. Der Betreiber verwahrt kein Geld und übernimmt keine Haftung für Transaktionen. Ich handle auf eigenes Risiko.</span>
                     </label>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">Account erstellen</button>
@@ -180,7 +186,7 @@
         <div class="container">
             <p>🧪 Toxic Market — Beta · Nur für MX12ART Toxic Booster Karten</p>
             <p>Bitcoin-Lightning · Nostr · Open Source</p>
-            <p><a href="https://github.com/akamaru-claw/toxic-market">GitHub</a> · <a href="/api/api.php?action=cards">API</a></p>
+            <p><a href="https://github.com/akamaru-claw/toxic-market">GitHub</a> · <a href="/toxic-market/api/api.php?action=cards">API</a></p>
         </div>
     </footer>
 
