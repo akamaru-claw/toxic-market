@@ -19,6 +19,8 @@
     RewriteRule ^create-auction$ /toxic-market/create-auction.html [QSA,L]
     # Dashboard
     RewriteRule ^dashboard$ /toxic-market/dashboard.html [QSA,L]
+    # Set Builder
+    RewriteRule ^set-builder$ /toxic-market/set-builder.html [QSA,L]
     # Image uploads
     RewriteRule ^uploads/ - [L]
     

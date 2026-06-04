@@ -245,6 +245,54 @@ try {
             echo json_encode(['success' => true, 'id' => $id]);
             break;
 
+        // === TOGGLE COLLECTION ===
+        case 'toggle_collection':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $cardId = intval($data['card_id'] ?? 0);
+            $owned = $data['owned'] ?? true;
+            
+            if (!$cardId) throw new Exception('Card ID required', 400);
+            
+            // Create table if not exists
+            $db->exec('CREATE TABLE IF NOT EXISTS user_collection (
+                user_id INTEGER REFERENCES users(id),
+                card_template_id INTEGER REFERENCES card_templates(id),
+                acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, card_template_id)
+            )');
+            
+            if ($owned) {
+                $db->prepare('INSERT OR IGNORE INTO user_collection (user_id, card_template_id) VALUES (?, ?)')
+                    ->execute([$user['id'], $cardId]);
+            } else {
+                $db->prepare('DELETE FROM user_collection WHERE user_id = ? AND card_template_id = ?')
+                    ->execute([$user['id'], $cardId]);
+            }
+            
+            echo json_encode(['success' => true, 'card_id' => $cardId, 'owned' => $owned]);
+            break;
+
+        // === MY COLLECTION ===
+        case 'my_collection':
+            $user = requireAuth();
+            
+            // Create table if not exists
+            $db->exec('CREATE TABLE IF NOT EXISTS user_collection (
+                user_id INTEGER REFERENCES users(id),
+                card_template_id INTEGER REFERENCES card_templates(id),
+                acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, card_template_id)
+            )');
+            
+            $stmt = $db->prepare('SELECT ct.*, uc.acquired_at FROM card_templates ct JOIN user_collection uc ON ct.id = uc.card_template_id WHERE uc.user_id = ? ORDER BY ct.generation, ct.id');
+            $stmt->execute([$user['id']]);
+            $collection = $stmt->fetchAll();
+            
+            echo json_encode(['data' => $collection, 'total' => count($collection)]);
+            break;
+
         // === CATEGORIES (SatStash-compatible) ===
         case 'categories':
             echo json_encode(['data' => ['trading-cards', 'art', 'collectibles', 'bitcoin', 'accessories'], 'meta' => ['api_version' => 'v1']]);

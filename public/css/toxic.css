@@ -414,4 +414,17 @@ footer strong { color: var(--bitcoin); }
     .container { padding: 0 16px; }
     #hero h1 { font-size: 1.8rem; }
     .card-detail-grid { grid-template-columns: 1fr !important; }
+    .nav-inner { padding: 12px 16px; }
+    .nav-links a { font-size: 11px; }
+    .nav-links .btn { padding: 4px 10px; font-size: 11px; }
+    .generations { grid-template-columns: 1fr; }
+    .set-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    .filter-bar { flex-direction: column; }
+    .filter-btn { width: 100%; text-align: center; }
+    .search-input { width: 100%; min-width: unset; }
+    .hero-stats { flex-direction: column; gap: 16px; }
+    .stat-num { font-size: 1.4rem; }
+    .modal-content { width: 95%; padding: 24px 16px; }
+    .disclaimer-banner { font-size: 11px; }
+    .proof-steps li { padding: 8px 0 8px 24px; font-size: 12px; }
 }

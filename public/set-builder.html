@@ -1,0 +1,169 @@
+<?php
+/**
+ * Toxic Market — Set Builder (Welche Karten fehlen dir?)
+ */
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
+
+$db = getDB();
+$user = isLoggedIn() ? currentUser() : null;
+
+// Get all cards grouped by generation
+$generation = intval($_GET['gen'] ?? 0);
+$filter = $generation > 0 ? "WHERE ct.generation = $generation" : '';
+$cards = $db->query("SELECT * FROM card_templates $filter ORDER BY generation, id")->fetchAll();
+
+// Count totals
+$genCounts = [];
+foreach ($db->query("SELECT generation, COUNT(*) as cnt FROM card_templates GROUP BY generation")->fetchAll() as $row) {
+    $genCounts[$row['generation']] = $row['cnt'];
+}
+$totalCards = array_sum($genCounts);
+
+// Get user's owned card IDs if logged in
+$ownedIds = [];
+if ($user) {
+    $stmt = $db->prepare('SELECT card_template_id FROM user_collection WHERE user_id = ?');
+    $stmt->execute([$user['id']]);
+    $ownedIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+$ownedCount = count($ownedIds);
+$completionPct = $totalCards > 0 ? round(($ownedCount / $totalCards) * 100) : 0;
+?>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Builder — Toxic Market</title>
+    <meta name="description" content="Welche Toxic Booster Karten fehlen dir? Sammel-Fortschritt und Checklist.">
+    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <style>
+        .set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .set-card {
+            background: var(--card-glass); backdrop-filter: blur(8px);
+            border: 2px solid var(--border); border-radius: var(--radius-md);
+            padding: 12px; text-align: center; cursor: pointer;
+            transition: var(--transition); position: relative;
+        }
+        .set-card:hover { background: var(--card-hover); border-color: var(--border-glow); }
+        .set-card.owned { border-color: var(--accent); background: rgba(0,255,136,0.06); }
+        .set-card.owned::after {
+            content: '✓'; position: absolute; top: 8px; right: 8px;
+            background: var(--accent); color: #000; font-size: 12px; font-weight: 700;
+            width: 22px; height: 22px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center;
+        }
+        .set-card img { width: 70px; height: 95px; object-fit: contain; margin: 0 auto 8px; display: block; }
+        .set-card .card-num { font-size: 11px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+        .set-card .card-set-name { font-size: 12px; font-weight: 600; margin-top: 2px; line-height: 1.3; }
+        .set-card.holo .card-set-name { background: linear-gradient(135deg, #ff6b9d, #c44dff, #6bcfff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .progress-bar { background: var(--bg); border-radius: 20px; height: 24px; overflow: hidden; margin: 16px 0; }
+        .progress-bar-fill {
+            height: 100%; border-radius: 20px;
+            background: linear-gradient(90deg, var(--accent), var(--purple));
+            transition: width 0.5s ease;
+            display: flex; align-items: center; justify-content: flex-end;
+            padding-right: 8px; font-size: 12px; font-weight: 700; color: #000;
+        }
+        .gen-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+        .gen-tab {
+            padding: 10px 20px; border-radius: 24px; cursor: pointer;
+            background: var(--card); color: var(--text-muted); border: 1px solid var(--border);
+            font-size: 14px; font-weight: 500; transition: var(--transition);
+        }
+        .gen-tab:hover { background: var(--card-hover); }
+        .gen-tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    </style>
+</head>
+<body>
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
+            <div class="nav-links">
+                <a href="/toxic-market/#cards">Karten</a>
+                <a href="/toxic-market/set-builder" style="color:var(--accent);">📋 Set Builder</a>
+                <?php if ($user): ?>
+                <span style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars($user['display_name']) ?></span>
+                <?php else: ?>
+                <button class="btn btn-outline btn-sm" onclick="window.location.href='/toxic-market/'">Anmelden</button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width:1000px; padding: 30px 20px 60px;">
+        <h1 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;">📋 Set Builder</h1>
+        <p style="color:var(--text-muted);margin-bottom:24px;">Welche Karten fehlen dir? Klicke auf Karten, die du besitzt.</p>
+
+        <!-- Progress -->
+        <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:1.2rem;font-weight:700;"><?= $ownedCount ?> / <?= $totalCards ?> Karten</span>
+                <span style="color:var(--accent);font-weight:600;font-size:1.2rem;"><?= $completionPct ?>%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" style="width:<?= $completionPct ?>%"><?= $completionPct ?>%</div>
+            </div>
+            <div style="display:flex;gap:16px;margin-top:12px;font-size:13px;color:var(--text-muted);">
+                <span>🟢 Besitzt du</span>
+                <span>⬜ Fehlt noch</span>
+            </div>
+        </div>
+
+        <!-- Generation Tabs -->
+        <div class="gen-tabs">
+            <span class="gen-tab <?= !$generation ? 'active' : '' ?>" onclick="location.href='/toxic-market/set-builder'">Alle (<?= $totalCards ?>)</span>
+            <?php foreach ([1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'] as $g => $label): ?>
+            <span class="gen-tab <?= $generation == $g ? 'active' : '' ?>" onclick="location.href='/toxic-market/set-builder?gen=<?= $g ?>'"><?= $label ?> (<?= $genCounts[$g] ?? 0 ?>)</span>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Cards Grid -->
+        <div class="set-grid">
+            <?php foreach ($cards as $card):
+                $isOwned = in_array($card['id'], $ownedIds);
+                $holos = json_decode($card['holo_positions'], true) ?: [];
+                $imgUrl = "/toxic-market/cards/card.svg.php?id={$card['id']}&gen={$card['generation']}&name=" . urlencode($card['name']) . "&holo=" . (in_array(21, $holos) ? '1' : '0');
+                $genLabel = [1=>'G1',2=>'Z6',3=>'RE'][$card['generation']] ?? '';
+            ?>
+            <div class="set-card <?= $isOwned ? 'owned' : '' ?> <?= in_array(21, $holos) ? 'holo' : '' ?>" 
+                 data-id="<?= $card['id'] ?>" onclick="toggleCard(<?= $card['id'] ?>, this)">
+                <img src="<?= $imgUrl ?>" alt="<?= htmlspecialchars($card['name']) ?>" loading="lazy">
+                <div class="card-num">#<?= $card['id'] ?> · <?= $genLabel ?></div>
+                <div class="card-set-name"><?= htmlspecialchars($card['name']) ?></div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>🧪 Toxic Market · <strong>Kein Custody, keine Haftung.</strong> P2P-Marktplatz.</p>
+        </div>
+    </footer>
+
+    <script src="/toxic-market/js/toxic.js"></script>
+    <script>
+    async function toggleCard(cardId, el) {
+        const isOwned = el.classList.contains('owned');
+        
+        // Toggle visually immediately
+        el.classList.toggle('owned');
+        
+        // Save to server if logged in
+        try {
+            await fetch('/toxic-market/api/api.php?action=toggle_collection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ card_id: cardId, owned: !isOwned })
+            });
+        } catch(e) {
+            // Revert on error
+            el.classList.toggle('owned');
+        }
+    }
+    </script>
+</body>
+</html>
