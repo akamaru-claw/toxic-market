@@ -131,14 +131,95 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                 </div>
                 <?php endif; ?>
 
+                <!-- Price Breakdown -->
+                <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:20px;">
+                    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--text-muted);margin-bottom:8px;">
+                        <span>Kartenpreis</span>
+                        <span style="font-family:'JetBrains Mono',monospace;color:var(--text);"><?= number_format($listing['price_sats']) ?> sats</span>
+                    </div>
+                    <?php if ($listing['local_shipping_sats'] > 0 || $listing['intl_shipping_sats'] > 0): ?>
+                    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--text-muted);margin-bottom:8px;">
+                        <span>Versand (DE)</span>
+                        <span style="font-family:'JetBrains Mono',monospace;color:var(--text);"><?= $listing['local_shipping_sats'] > 0 ? number_format($listing['local_shipping_sats']).' sats' : ' Kostenlos' ?></span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--text-muted);margin-bottom:8px;">
+                        <span>Versand (Intl)</span>
+                        <span style="font-family:'JetBrains Mono',monospace;color:var(--text);"><?= $listing['intl_shipping_sats'] > 0 ? number_format($listing['intl_shipping_sats']).' sats' : ' Kostenlos' ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;">
+                        <span>Gesamt</span>
+                        <span style="font-family:'JetBrains Mono',monospace;color:var(--bitcoin);" id="total-price"><?= number_format($listing['price_sats']) ?> sats</span>
+                    </div>
+                    <div style="text-align:right;font-size:12px;color:var(--text-dim);margin-top:4px;" id="price-eur"></div>
+                </div>
+
+                <!-- Shipping Region -->
+                <div class="form-group" style="margin-top:16px;">
+                    <label>Versand nach</label>
+                    <select id="shipping-region" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;" onchange="updateTotal()">
+                        <option value="none">Abholung / Kein Versand</option>
+                        <option value="de" <?= ($listing['local_shipping_sats'] == 0) ? 'selected' : '' ?>>Deutschland</option>
+                        <option value="intl">International</option>
+                    </select>
+                </div>
+
                 <!-- Buy Button -->
-                <button class="btn btn-bitcoin btn-full" style="margin-top:24px;padding:16px;font-size:16px;font-weight:700;" onclick="alert('Zahlungssystem kommt in Phase 4!')">
+                <button class="btn btn-bitcoin btn-full" style="margin-top:16px;padding:16px;font-size:16px;font-weight:700;" id="buy-btn" onclick="initiatePayment()">
                     ⚡ Kaufen für <?= number_format($listing['price_sats']) ?> Sats
                 </button>
 
                 <p style="text-align:center;font-size:11px;color:var(--text-dim);margin-top:8px;">
                     Du handelst direkt mit dem Verkäufer. Toxic Market verwahrt kein Geld.
                 </p>
+
+                <!-- Payment Modal -->
+                <div id="payment-modal" class="modal hidden">
+                    <div class="modal-backdrop" onclick="closePaymentModal()"></div>
+                    <div class="modal-content" style="max-width:480px;">
+                        <button class="modal-close" onclick="closePaymentModal()">✕</button>
+                        <h2 style="font-size:1.3rem;margin-bottom:16px;">⚡ Zahlung</h2>
+                        <div id="payment-content">
+                            <div style="text-align:center;padding:20px;">
+                                <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">Gesamt</div>
+                                <div style="font-size:2rem;font-weight:800;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;" id="pay-amount"></div>
+                                <div style="font-size:13px;color:var(--text-dim);margin-top:4px;" id="pay-amount-eur"></div>
+                            </div>
+                            <div id="payment-methods" style="margin-top:20px;">
+                                <!-- Lightning (if invoice available) -->
+                                <div id="lightning-payment" style="display:none;">
+                                    <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;">
+                                        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">BOLT11 Invoice:</div>
+                                        <div style="word-break:break-all;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);background:var(--bg-elevated);padding:10px;border-radius:8px;cursor:pointer;margin-bottom:12px;" id="bolt11-invoice" onclick="copyInvoice()">Loading...</div>
+                                        <button class="btn btn-primary btn-full" onclick="copyInvoice()">📋 Invoice kopieren</button>
+                                        <p style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:8px;">Zahle die Invoice mit deinem Lightning-Wallet.</p>
+                                    </div>
+                                </div>
+                                <!-- Manual Payment -->
+                                <div id="manual-payment" style="margin-top:16px;">
+                                    <div style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);border-radius:12px;padding:16px;">
+                                        <h3 style="font-size:14px;color:var(--accent);margin-bottom:12px;">💳 Direktzahlung an Verkäufer</h3>
+                                        <ol style="font-size:13px;color:var(--text-muted);padding-left:20px;line-height:1.8;">
+                                            <li>Kontaktiere den Verkäufer per Lightning</li>
+                                            <li>Sende <strong id="manual-amount"></strong> an den Verkäufer</li>
+                                            <li>Bestätige die Zahlung hier</li>
+                                            <li>Der Verkäufer bestätigt den Erhalt</li>
+                                        </ol>
+                                        <button class="btn btn-outline btn-full" style="margin-top:12px;" id="confirm-payment-btn" onclick="confirmPayment()">
+                                            ✅ Zahlung gesendet
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="payment-status" class="hidden" style="text-align:center;margin-top:20px;">
+                                <div style="font-size:48px;margin-bottom:12px;" id="status-emoji">⏳</div>
+                                <div style="font-size:16px;font-weight:600;" id="status-text">Zahlung ausstehend</div>
+                                <div style="font-size:13px;color:var(--text-muted);margin-top:4px;" id="status-sub"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -166,5 +247,156 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
     </footer>
 
     <script src="/toxic-market/js/toxic.js"></script>
+    <script>
+    const PRICE_SATS = <?= $listing['price_sats'] ?>;
+    const LOCAL_SHIP = <?= $listing['local_shipping_sats'] ?? 0 ?>;
+    const INTL_SHIP = <?= $listing['intl_shipping_sats'] ?? 0 ?>;
+    const LISTING_ID = '<?= $listing['id'] ?>';
+    const LOGGED_IN = <?= isLoggedIn() ? 'true' : 'false' ?>;
+
+    // Load EUR price
+    (async () => {
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=btc_price');
+            const data = await res.json();
+            if (data.prices?.eur) {
+                const eur = (PRICE_SATS / 100000000) * data.prices.eur;
+                document.getElementById('price-eur').textContent = `≈ €${eur.toFixed(2)}`;
+            }
+        } catch(e) {}
+    })();
+
+    function updateTotal() {
+        const region = document.getElementById('shipping-region').value;
+        let total = PRICE_SATS;
+        if (region === 'de') total += LOCAL_SHIP;
+        if (region === 'intl') total += INTL_SHIP;
+        document.getElementById('total-price').textContent = total.toLocaleString() + ' sats';
+        document.getElementById('buy-btn').innerHTML = `⚡ Kaufen für ${total.toLocaleString()} Sats`;
+    }
+
+    // Init shipping default
+    <?php if ($listing['local_shipping_sats'] == 0): ?>
+    // Free shipping in DE by default
+    <?php endif; ?>
+    updateTotal();
+
+    async function initiatePayment() {
+        if (!LOGGED_IN) {
+            alert('Bitte melde dich an, um zu kaufen.');
+            window.location.href = '/toxic-market/';
+            return;
+        }
+        
+        const region = document.getElementById('shipping-region').value;
+        const btn = document.getElementById('buy-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Wird vorbereitet...';
+        
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=initiate_payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    listing_id: LISTING_ID,
+                    payment_method: 'lightning',
+                    include_shipping: region !== 'none',
+                    shipping_region: region
+                })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                // Show payment modal
+                document.getElementById('payment-modal').classList.remove('hidden');
+                document.getElementById('pay-amount').textContent = data.amount_sats.toLocaleString() + ' sats';
+                if (data.amount_eur) {
+                    document.getElementById('pay-amount-eur').textContent = `≈ €${data.amount_eur}`;
+                }
+                
+                if (data.payment_request) {
+                    // Lightning invoice available
+                    document.getElementById('lightning-payment').style.display = 'block';
+                    document.getElementById('bolt11-invoice').textContent = data.payment_request;
+                } else {
+                    // Manual payment
+                    document.getElementById('manual-amount').textContent = data.amount_sats.toLocaleString() + ' sats';
+                }
+                
+                // Store transaction ID
+                window.currentTransactionId = data.transaction_id;
+                
+            } else {
+                alert('Fehler: ' + (data.error || 'Zahlung konnte nicht initiiert werden'));
+            }
+        } catch (e) {
+            alert('Server-Fehler beim Initiieren der Zahlung');
+        }
+        
+        btn.disabled = false;
+        btn.textContent = '⚡ Kaufen für ' + PRICE_SATS.toLocaleString() + ' Sats';
+    }
+
+    function copyInvoice() {
+        const invoice = document.getElementById('bolt11-invoice').textContent;
+        navigator.clipboard.writeText(invoice).then(() => {
+            alert('Invoice kopiert! Zahle mit deiner Lightning-Wallet.');
+        });
+    }
+
+    function closePaymentModal() {
+        document.getElementById('payment-modal').classList.add('hidden');
+    }
+
+    async function confirmPayment() {
+        if (!window.currentTransactionId) return;
+        const btn = document.getElementById('confirm-payment-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Wird geprüft...';
+        
+        // Poll payment status
+        const checkStatus = async () => {
+            try {
+                const res = await fetch(`/toxic-market/api/api.php?action=payment_status&id=${window.currentTransactionId}`);
+                const data = await res.json();
+                
+                const statusEl = document.getElementById('payment-status');
+                const emojiEl = document.getElementById('status-emoji');
+                const textEl = document.getElementById('status-text');
+                const subEl = document.getElementById('status-sub');
+                
+                statusEl.classList.remove('hidden');
+                
+                if (data.status === 'paid' || data.status === 'confirmed_manual') {
+                    emojiEl.textContent = '✅';
+                    textEl.textContent = 'Zahlung bestätigt!';
+                    subEl.textContent = 'Der Verkäufer wird kontaktiert.';
+                    return true;
+                } else if (data.status === 'pending_manual' || data.status === 'pending') {
+                    emojiEl.textContent = '⏳';
+                    textEl.textContent = 'Zahlung ausstehend';
+                    subEl.textContent = 'Warte auf Bestätigung durch den Verkäufer...';
+                    return false;
+                }
+            } catch(e) {}
+            return false;
+        };
+        
+        // Check immediately, then every 10 seconds
+        const paid = await checkStatus();
+        if (!paid) {
+            const interval = setInterval(async () => {
+                const done = await checkStatus();
+                if (done) {
+                    clearInterval(interval);
+                    setTimeout(() => { window.location.reload(); }, 3000);
+                }
+            }, 10000);
+        } else {
+            setTimeout(() => { window.location.reload(); }, 3000);
+        }
+    }
+    </script>
 </body>
 </html>

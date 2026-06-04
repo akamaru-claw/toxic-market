@@ -150,6 +150,11 @@ function initDB(): void {
         settled_at DATETIME
     )');
 
+    // Add columns if they don't exist (safe migration)
+    try { $db->exec('ALTER TABLE transactions ADD COLUMN shipping_region TEXT DEFAULT \'\''); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE listings ADD COLUMN free_shipping BOOLEAN DEFAULT 0'); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE listings ADD COLUMN payment_method TEXT DEFAULT \'manual\''); } catch(Exception $e) {}
+
     $db->exec('CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
