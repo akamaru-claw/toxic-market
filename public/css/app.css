@@ -1,0 +1,125 @@
+/* Toxic Market — Styles */
+:root {
+    --bg: #0a0a0f;
+    --bg-alt: #12121a;
+    --card: #1a1a28;
+    --card-hover: #222236;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-muted: #8888a8;
+    --accent: #00ff88;
+    --accent-dim: #00cc6a;
+    --bitcoin: #f7931a;
+    --danger: #ff4444;
+    --holo: linear-gradient(135deg, #ff6b9d, #c44dff, #6bcfff, #ff6b9d);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+.hidden { display: none !important; }
+.btn { display: inline-block; padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { background: var(--accent-dim); }
+.btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.btn-outline:hover { background: var(--accent); color: #000; }
+.btn-bitcoin { background: var(--bitcoin); color: #000; }
+.btn-bitcoin:hover { background: #e8850f; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-full { width: 100%; }
+
+/* Nav */
+nav { position: sticky; top: 0; z-index: 100; background: rgba(10,10,15,0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 12px 20px; }
+.logo { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; color: var(--text); }
+.logo:hover { text-decoration: none; }
+.logo-icon { font-size: 24px; }
+.nav-links { display: flex; align-items: center; gap: 20px; }
+.nav-links a { color: var(--text-muted); font-size: 14px; }
+.nav-links a:hover { color: var(--text); text-decoration: none; }
+
+/* Hero */
+#hero { padding: 60px 0 40px; text-align: center; }
+#hero h1 { font-size: 3rem; margin-bottom: 8px; background: var(--holo); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 30px; }
+.hero-stats { display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; }
+.stat { text-align: center; }
+.stat-num { display: block; font-size: 2rem; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.generations { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; max-width: 900px; margin: 0 auto; }
+.gen-card { display: block; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center; transition: all .2s; text-decoration: none; }
+.gen-card:hover { background: var(--card-hover); transform: translateY(-2px); text-decoration: none; }
+.gen-badge { display: inline-block; background: var(--accent); color: #000; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 12px; margin-bottom: 8px; }
+.gen-card h3 { color: var(--text); margin: 8px 0 4px; }
+.gen-card p { color: var(--text-muted); font-size: 0.9rem; }
+
+/* Sections */
+.section { padding: 60px 0; }
+.section-alt { background: var(--bg-alt); }
+.section h2 { font-size: 1.8rem; margin-bottom: 24px; }
+
+/* Filter bar */
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
+.filter-btn { background: var(--card); color: var(--text-muted); border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; transition: all .2s; }
+.filter-btn:hover, .filter-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+.search-input { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; font-size: 13px; outline: none; margin-left: auto; }
+.search-input:focus { border-color: var(--accent); }
+
+/* Cards Grid */
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.card-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: all .2s; cursor: pointer; }
+.card-item:hover { background: var(--card-hover); transform: translateY(-2px); }
+.card-img { width: 100%; aspect-ratio: 3/4; background: var(--bg-alt); display: flex; align-items: center; justify-content: center; font-size: 60px; }
+.card-info { padding: 12px; }
+.card-name { font-size: 14px; font-weight: 600; }
+.card-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.card-gen { display: inline-block; background: var(--border); color: var(--text-muted); font-size: 10px; padding: 2px 8px; border-radius: 10px; margin-top: 6px; }
+.card-gen.gen-1 { background: #1a3a2a; color: #00ff88; }
+.card-gen.gen-2 { background: #2a1a3a; color: #c44dff; }
+.card-gen.gen-3 { background: #1a2a3a; color: #6bcfff; }
+.card-price { font-size: 14px; color: var(--bitcoin); font-weight: 600; margin-top: 6px; }
+.card-holo { background: var(--holo); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; font-size: 11px; margin-top: 4px; }
+
+/* Listings Grid */
+.listings-grid, .auctions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.listing-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.listing-title { font-weight: 600; font-size: 15px; }
+.listing-price { font-size: 1.3rem; color: var(--bitcoin); font-weight: 700; margin: 8px 0; }
+.listing-meta { font-size: 12px; color: var(--text-muted); }
+.auction-timer { font-size: 14px; color: var(--danger); font-weight: 600; }
+
+/* Modal */
+.modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.7); }
+.modal-content { position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; max-width: 420px; width: 90%; }
+.modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+.auth-tabs { display: flex; gap: 0; margin-bottom: 24px; }
+.auth-tabs .tab { flex: 1; padding: 12px; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); cursor: pointer; font-size: 14px; text-align: center; }
+.auth-tabs .tab:first-child { border-radius: 8px 0 0 8px; }
+.auth-tabs .tab:last-child { border-radius: 0 8px 8px 0; }
+.auth-tabs .tab.active { background: var(--accent); color: #000; font-weight: 600; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+.form-group input { width: 100%; padding: 10px 14px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+.form-group input:focus { border-color: var(--accent); outline: none; }
+.error { color: var(--danger); font-size: 13px; margin-top: 8px; }
+.auth-divider { display: flex; align-items: center; margin: 20px 0; color: var(--text-muted); }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.auth-divider span { padding: 0 12px; font-size: 13px; }
+
+/* Footer */
+footer { padding: 30px 0; text-align: center; color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border); margin-top: 40px; }
+footer p { margin: 4px 0; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    #hero h1 { font-size: 2rem; }
+    .hero-stats { gap: 20px; }
+    .stat-num { font-size: 1.5rem; }
+    .cards-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .listings-grid, .auctions-grid { grid-template-columns: 1fr; }
+    .nav-links { gap: 12px; }
+    .nav-links a { font-size: 12px; }
+}

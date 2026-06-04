@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toxic Market — MX12ART Sammelkarten</title>
+    <meta name="description" content="Bitcoin-Auktionsplattform für MX12ART Toxic Booster Sammelkarten. Kaufen, verkaufen, bieten — mit Lightning und Onchain.">
+    <meta property="og:title" content="Toxic Market — MX12ART Sammelkarten">
+    <meta property="og:description" content="Die dedizierte Auktionsplattform für Toxic Booster Karten. Genesis Edition 2025 & Zitadelle Edition 2026.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link href="/css/app.css" rel="stylesheet">
+</head>
+<body>
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/" class="logo">
+                <span class="logo-icon">🧪</span>
+                <span class="logo-text">Toxic Market</span>
+            </a>
+            <div class="nav-links">
+                <a href="/#cards">Karten</a>
+                <a href="/#listings">Kaufen</a>
+                <a href="/#auctions">Auktionen</a>
+                <button id="login-btn" class="btn btn-outline" onclick="showAuth()">Anmelden</button>
+                <div id="user-menu" class="hidden">
+                    <span id="user-name"></span>
+                    <button class="btn btn-sm" onclick="logout()">Abmelden</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section id="hero">
+        <div class="container">
+            <h1>Toxic Market</h1>
+            <p class="subtitle">Die Bitcoin-Auktionsplattform für <strong>MX12ART Toxic Booster</strong> Sammelkarten</p>
+            <div class="hero-stats">
+                <div class="stat"><span class="stat-num" id="stat-cards">63</span><span class="stat-label">Karten</span></div>
+                <div class="stat"><span class="stat-num" id="stat-total">13.440</span><span class="stat-label">Gesamtauflage</span></div>
+                <div class="stat"><span class="stat-num" id="stat-listings">0</span><span class="stat-label">Aktiv</span></div>
+            </div>
+            <div class="generations">
+                <a href="#cards" class="gen-card" data-gen="1">
+                    <div class="gen-badge">2025</div>
+                    <h3>Genesis Edition</h3>
+                    <p>21 Motive · 210 Stück · #21 Holo</p>
+                </a>
+                <a href="#cards" class="gen-card" data-gen="2">
+                    <div class="gen-badge">2026</div>
+                    <h3>Zitadelle Edition</h3>
+                    <p>21 Motive · 210 Stück · #1, #21, #210 Holo</p>
+                </a>
+                <a href="#cards" class="gen-card" data-gen="3">
+                    <div class="gen-badge">Remake</div>
+                    <h3>Genesis Remake (EN)</h3>
+                    <p>21 Motive · 35 Stück · Englisch</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cards Browser -->
+    <section id="cards" class="section">
+        <div class="container">
+            <h2>Karten-Browser</h2>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-gen="all">Alle</button>
+                <button class="filter-btn" data-gen="1">Genesis 2025</button>
+                <button class="filter-btn" data-gen="2">Zitadelle 2026</button>
+                <button class="filter-btn" data-gen="3">Remake (EN)</button>
+                <input type="search" id="card-search" placeholder="Suchen..." class="search-input">
+            </div>
+            <div id="cards-grid" class="cards-grid">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Active Listings -->
+    <section id="listings" class="section section-alt">
+        <div class="container">
+            <h2>Kaufen</h2>
+            <div id="listings-grid" class="listings-grid">
+                <p class="empty">Noch keine Angebote. <a href="#" onclick="showCreateListing()">Erstelle das Erste!</a></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Active Auctions -->
+    <section id="auctions" class="section">
+        <div class="container">
+            <h2>🔨 Live-Auktionen</h2>
+            <div id="auctions-grid" class="auctions-grid">
+                <p class="empty">Keine aktiven Auktionen.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal hidden">
+        <div class="modal-backdrop" onclick="hideAuth()"></div>
+        <div class="modal-content">
+            <button class="modal-close" onclick="hideAuth()">✕</button>
+            <div class="auth-tabs">
+                <button class="tab active" onclick="switchTab('login')">Anmelden</button>
+                <button class="tab" onclick="switchTab('register')">Registrieren</button>
+            </div>
+            
+            <!-- Login -->
+            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="login-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Passwort</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Anmelden</button>
+                <p id="login-error" class="error hidden"></p>
+            </form>
+
+            <!-- Register -->
+            <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Anzeigename</label>
+                    <input type="text" id="reg-name" required placeholder="Satoshi" minlength="2" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Passwort (mind. 6 Zeichen)</label>
+                    <input type="password" id="reg-password" required placeholder="••••••••" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Account erstellen</button>
+                <p id="reg-error" class="error hidden"></p>
+            </form>
+
+            <div class="auth-divider"><span>oder</span></div>
+            <button class="btn btn-bitcoin btn-full" onclick="loginNostr()">
+                ⚡ Login mit Nostr
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>🧪 Toxic Market — Beta · Nur für MX12ART Toxic Booster Karten</p>
+            <p>Bitcoin-Lightning · Nostr · Open Source</p>
+            <p><a href="https://github.com/akamaru-claw/toxic-market">GitHub</a> · <a href="/api/api.php?action=cards">API</a></p>
+        </div>
+    </footer>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
