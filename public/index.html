@@ -23,6 +23,7 @@
                 <a href="/toxic-market/#cards">Karten</a>
                 <a href="/toxic-market/#listings">Kaufen</a>
                 <a href="/toxic-market/#auctions">Auktionen</a>
+                <a href="/toxic-market/create-auction" id="create-auction-btn" class="btn btn-outline btn-sm hidden" style="text-decoration:none;">🔨 Auktion</a>
                 <a href="/toxic-market/create" id="create-listing-btn" class="btn btn-primary btn-sm hidden" style="text-decoration:none;">🏷️ Verkaufen</a>
                 <button id="login-btn" class="btn btn-outline" onclick="showAuth()">Anmelden</button>
                 <div id="user-menu" class="hidden" style="display:flex;align-items:center;gap:10px;">
@@ -119,9 +120,12 @@
     <!-- Active Auctions -->
     <section id="auctions" class="section">
         <div class="container">
-            <h2>🔨 Live-Auktionen</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+                <h2 style="margin:0;">🔨 Live-Auktionen</h2>
+                <a href="/toxic-market/create-auction" class="btn btn-outline btn-sm" id="create-auction-btn-2" style="display:none;">🔨 Auktion starten</a>
+            </div>
             <div id="auctions-grid" class="auctions-grid">
-                <p class="empty">Keine aktiven Auktionen.</p>
+                <p class="empty">Keine aktiven Auktionen. <a href="/toxic-market/create-auction" onclick="return showAuthFirst()">Erstelle die erste!</a></p>
             </div>
         </div>
     </section>

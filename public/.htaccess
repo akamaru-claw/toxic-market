@@ -11,9 +11,13 @@
     RewriteRule ^listing/([a-zA-Z0-9]+)$ /toxic-market/listing.html?id=$1 [QSA,L]
     # Seller profile pages
     RewriteRule ^seller/([0-9]+)$ /toxic-market/seller.html?id=$1 [QSA,L]
+    # Auction detail pages
+    RewriteRule ^auction/([a-zA-Z0-9]+)$ /toxic-market/auction.html?id=$1 [QSA,L]
     # Create listing page
     RewriteRule ^create$ /toxic-market/create.html [QSA,L]
-    # Image upload directory
+    # Create auction page
+    RewriteRule ^create-auction$ /toxic-market/create-auction.html [QSA,L]
+    # Image uploads
     RewriteRule ^uploads/ - [L]
     
     # SPA routing (only for non-existing files)
@@ -27,4 +31,7 @@
     ExpiresActive On
     ExpiresByType text/css "access plus 1 day"
     ExpiresByType application/javascript "access plus 1 day"
+    ExpiresByType image/jpeg "access plus 7 days"
+    ExpiresByType image/png "access plus 7 days"
+    ExpiresByType image/webp "access plus 7 days"
 </IfModule>

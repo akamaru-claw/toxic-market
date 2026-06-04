@@ -235,6 +235,98 @@ try {
             echo json_encode(['data' => ['trading-cards', 'art', 'collectibles', 'bitcoin', 'accessories'], 'meta' => ['api_version' => 'v1']]);
             break;
 
+        // === CREATE AUCTION ===
+        case 'create_auction':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            
+            $id = bin2hex(random_bytes(16));
+            $startingPrice = intval($data['starting_price_sats'] ?? 0);
+            $duration = intval($data['duration_hours'] ?? 72); // default 3 days
+            $startsAt = $data['starts_at'] ?? date('Y-m-d H:i:s');
+            $endsAt = date('Y-m-d H:i:s', strtotime($startsAt . " +{$duration} hours"));
+            
+            $stmt = $db->prepare('INSERT INTO auctions (id, seller_id, card_template_id, title, description, starting_price_sats, current_price_sats, serial_number, image_urls, condition_text, local_shipping_sats, intl_shipping_sats, starts_at, ends_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt->execute([
+                $id, $user['id'], $data['card_template_id'] ?? null,
+                $data['title'], $data['description'] ?? '',
+                $startingPrice, $startingPrice,
+                $data['serial_number'] ?? '',
+                json_encode($data['image_urls'] ?? []),
+                $data['condition'] ?? 'mint',
+                $data['local_shipping_sats'] ?? 0, $data['intl_shipping_sats'] ?? 0,
+                $startsAt, $endsAt, 'active'
+            ]);
+            
+            echo json_encode(['success' => true, 'id' => $id, 'ends_at' => $endsAt]);
+            break;
+
+        // === PLACE BID ===
+        case 'place_bid':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            
+            $auctionId = $data['auction_id'] ?? '';
+            $bidAmount = intval($data['amount_sats'] ?? 0);
+            
+            // Validate auction
+            $stmt = $db->prepare('SELECT a.*, u.id as seller_uid FROM auctions a JOIN users u ON a.seller_id = u.id WHERE a.id = ? AND a.status = ?');
+            $stmt->execute([$auctionId, 'active']);
+            $auction = $stmt->fetch();
+            if (!$auction) throw new Exception('Auction not found or not active', 404);
+            if ($auction['seller_id'] == $user['id']) throw new Exception('Cannot bid on your own auction', 400);
+            
+            $ends = new DateTime($auction['ends_at']);
+            if ($ends < new DateTime()) throw new Exception('Auction has ended', 400);
+            
+            $minBid = ($auction['current_price_sats'] ?? $auction['starting_price_sats']) + 500;
+            if ($bidAmount < $minBid) throw new Exception("Minimum bid is {$minBid} sats", 400);
+            
+            // Create bid
+            $stmt = $db->prepare('INSERT INTO bids (auction_id, bidder_id, amount_sats) VALUES (?, ?, ?)');
+            $stmt->execute([$auctionId, $user['id'], $bidAmount]);
+            
+            // Update auction current price
+            $db->prepare('UPDATE auctions SET current_price_sats = ? WHERE id = ?')->execute([$bidAmount, $auctionId]);
+            
+            echo json_encode(['success' => true, 'bid_amount' => $bidAmount, 'new_current_price' => $bidAmount]);
+            break;
+
+        // === AUCTION DETAIL ===
+        case 'auction':
+            $id = $_GET['id'] ?? '';
+            $stmt = $db->prepare('SELECT a.*, ct.name as card_name, ct.generation, ct.holo_positions, ct.total_print_run,
+                u.display_name as seller_name, u.id as seller_id
+                FROM auctions a 
+                JOIN card_templates ct ON a.card_template_id = ct.id
+                JOIN users u ON a.seller_id = u.id
+                WHERE a.id = ?');
+            $stmt->execute([$id]);
+            $auction = $stmt->fetch();
+            if (!$auction) throw new Exception('Auction not found', 404);
+            
+            $auction['image_urls'] = json_decode($auction['image_urls'], true);
+            $auction['holo_positions'] = json_decode($auction['holo_positions'], true);
+            
+            // Get recent bids
+            $stmt2 = $db->prepare('SELECT b.*, u.display_name as bidder_name FROM bids b JOIN users u ON b.bidder_id = u.id WHERE b.auction_id = ? ORDER BY b.amount_sats DESC LIMIT 20');
+            $stmt2->execute([$id]);
+            $auction['bids'] = $stmt2->fetchAll();
+            $auction['bid_count'] = count($auction['bids']);
+            
+            echo json_encode($auction);
+            break;
+
+        // === BIDS FOR AUCTION ===
+        case 'bids':
+            $auctionId = $_GET['auction_id'] ?? '';
+            $stmt = $db->prepare('SELECT b.*, u.display_name as bidder_name FROM bids b JOIN users u ON b.bidder_id = u.id WHERE b.auction_id = ? ORDER BY b.amount_sats DESC LIMIT 50');
+            $stmt->execute([$auctionId]);
+            echo json_encode(['data' => $stmt->fetchAll()]);
+            break;
+
         // === BLOCK HASH (for proof of ownership) ===
         case 'current_block':
             $ch = curl_init('https://mempool.space/api/blocks/tip/height');

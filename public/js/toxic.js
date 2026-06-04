@@ -59,9 +59,13 @@ function showLoggedIn() {
     const nameEl = document.getElementById('user-name');
     if (nameEl && currentUser) nameEl.textContent = currentUser.display_name;
     
-    // Show create button if logged in
-    const createBtn = document.getElementById('create-listing-btn');
-    if (createBtn) createBtn.classList.remove('hidden');
+    // Show create buttons when logged in
+    document.querySelectorAll('#create-listing-btn, #create-listing-btn-2, #create-auction-btn, #create-auction-btn-2').forEach(el => {
+        if (el) el.classList.remove('hidden');
+    });
+    document.querySelectorAll('#create-auction-btn-2').forEach(el => {
+        if (el) el.style.display = 'inline-flex';
+    });
 }
 
 function showLoggedOut() {
