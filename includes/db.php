@@ -69,6 +69,12 @@ function initDB(): void {
         condition_text TEXT DEFAULT \'mint\',
         serial_number TEXT DEFAULT \'\',
         image_urls TEXT DEFAULT \'[]\',
+        proof_image_url TEXT DEFAULT \'\',
+        proof_block_height INTEGER DEFAULT 0,
+        proof_block_hash TEXT DEFAULT \'\',
+        proof_verified BOOLEAN DEFAULT 0,
+        proof_verified_by INTEGER REFERENCES users(id),
+        proof_verified_at DATETIME,
         is_sold BOOLEAN DEFAULT 0,
         buyer_id INTEGER REFERENCES users(id),
         local_shipping_sats INTEGER DEFAULT 0,
@@ -92,6 +98,10 @@ function initDB(): void {
         deposit_sats INTEGER NOT NULL DEFAULT 0,
         serial_number TEXT DEFAULT \'\',
         image_urls TEXT DEFAULT \'[]\',
+        proof_image_url TEXT DEFAULT \'\',
+        proof_block_height INTEGER DEFAULT 0,
+        proof_block_hash TEXT DEFAULT \'\',
+        proof_verified BOOLEAN DEFAULT 0,
         condition_text TEXT DEFAULT \'mint\',
         local_shipping_sats INTEGER DEFAULT 0,
         intl_shipping_sats INTEGER DEFAULT 0,
@@ -100,6 +110,17 @@ function initDB(): void {
         ends_at DATETIME NOT NULL,
         status TEXT DEFAULT \'active\',
         winner_id INTEGER REFERENCES users(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )');
+
+    $db->exec('CREATE TABLE IF NOT EXISTS proof_verifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        listing_id TEXT REFERENCES listings(id),
+        auction_id TEXT REFERENCES auctions(id),
+        verifier_id INTEGER REFERENCES users(id),
+        proof_type TEXT DEFAULT \'block_hash\',
+        status TEXT DEFAULT \'pending\',
+        comment TEXT DEFAULT \'\',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )');
 

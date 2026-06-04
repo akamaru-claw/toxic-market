@@ -123,3 +123,48 @@ footer p { margin: 4px 0; }
     .nav-links { gap: 12px; }
     .nav-links a { font-size: 12px; }
 }
+
+/* Disclaimer Banner */
+.disclaimer-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #2a1a00;
+    border-top: 2px solid #f7931a;
+    padding: 12px 0;
+    z-index: 150;
+    font-size: 13px;
+}
+.disclaimer-banner p { margin: 0 0 8px; }
+.disclaimer-banner .btn { background: rgba(255,255,255,0.1); color: #f7931a; border: 1px solid #f7931a; }
+.disclaimer-banner .btn:hover { background: #f7931a; color: #000; }
+
+/* Proof of Ownership */
+.proof-box {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 16px 0;
+}
+.proof-box h3 { color: var(--accent); margin-bottom: 12px; }
+.proof-steps { list-style: none; padding: 0; }
+.proof-steps li { padding: 8px 0; padding-left: 28px; position: relative; }
+.proof-steps li::before { content: attr(data-step); position: absolute; left: 0; font-weight: 700; color: var(--accent); }
+.proof-hash-box {
+    background: #1a2a1a;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+    font-family: monospace;
+    font-size: 13px;
+    word-break: break-all;
+}
+.proof-verified { color: var(--accent); font-weight: 600; }
+.proof-unverified { color: var(--text-muted); }
+
+/* Checkbox */
+.checkbox-label { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text-muted); cursor: pointer; }
+.checkbox-label input { margin-top: 3px; }

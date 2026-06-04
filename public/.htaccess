@@ -1,39 +1,19 @@
-# Toxic Market — .htaccess (Strato/Apache)
-
-# Security Headers
-Header always set X-Content-Type-Options "nosniff"
-Header always set X-Frame-Options "SAMEORIGIN"
-Header always set X-XSS-Protection "1; mode=block"
-Header always set Referrer-Policy "strict-origin-when-cross-origin"
-
-# Block direct access to data directory
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Block access to .db files
+    # Block access to sensitive directories
     RewriteRule ^data/.*\.db$ - [F,L]
+    RewriteRule ^includes/ - [F,L]
     
-    # API routing
-    RewriteRule ^api/(.*)$ api/api.php [QSA,L]
-    
-    # SPA routing - send everything else to index.html
+    # SPA routing (only for non-existing files)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.html [QSA,L]
 </IfModule>
-
-# Block direct access to sensitive files
-<FilesMatch "\.(db|env|log|sh|sql)$">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
 
 # Cache static assets
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/css "access plus 1 day"
     ExpiresByType application/javascript "access plus 1 day"
-    ExpiresByType image/png "access plus 7 days"
-    ExpiresByType image/jpeg "access plus 7 days"
-    ExpiresByType image/svg+xml "access plus 7 days"
 </IfModule>

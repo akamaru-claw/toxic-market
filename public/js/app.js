@@ -76,8 +76,15 @@ async function handleRegister(e) {
     const name = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
+    const acceptDisclaimer = document.getElementById('reg-disclaimer').checked;
+    
+    if (!acceptDisclaimer) {
+        showError('reg-error', 'Du musst den Disclaimer akzeptieren');
+        return;
+    }
+    
     try {
-        const res = await api('register', { display_name: name, email, password }, 'POST');
+        const res = await api('register', { display_name: name, email, password, accept_disclaimer: true }, 'POST');
         if (res.success) { hideAuth(); checkAuth(); }
         else { showError('reg-error', res.error || 'Registrierung fehlgeschlagen'); }
     } catch (e) { showError('reg-error', 'Server-Fehler'); }
@@ -233,3 +240,25 @@ function showCreateListing() {
     if (!currentUser) { showAuth(); return; }
     alert('Listing-Formular kommt in Phase 2!');
 }
+
+// Proof of Ownership
+async function loadBlockInfo() {
+    try {
+        const res = await api('current_block');
+        const el = document.getElementById('proof-block-info');
+        el.innerHTML = `
+            <strong>Block-Height:</strong> ${res.block_height.toLocaleString()}<br>
+            <strong>Block-Hash:</strong> ${res.block_hash}<br>
+            <br>
+            <em>Schreibe auf deinen Zettel:</em><br>
+            <strong>"Block ${res.block_height} — [Dein Benutzername]"</strong><br>
+            <br>
+            ${res.instruction}
+        `;
+    } catch (e) {
+        document.getElementById('proof-block-info').innerHTML = 'Fehler beim Laden der Block-Height. Versuche es erneut.';
+    }
+}
+
+// Auto-load block info on page load
+loadBlockInfo();

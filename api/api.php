@@ -37,11 +37,13 @@ try {
             $email = $data['email'] ?? '';
             $password = $data['password'] ?? '';
             $display_name = $data['display_name'] ?? '';
+            $accept_disclaimer = $data['accept_disclaimer'] ?? false;
             
             if (!$email || !$password || !$display_name) {
                 throw new Exception('Email, password and display name required', 400);
             }
             if (strlen($password) < 6) throw new Exception('Password must be at least 6 characters', 400);
+            if (!$accept_disclaimer) throw new Exception('You must accept the disclaimer', 400);
             
             $user = registerWithEmail($email, $password, $display_name);
             if (!$user) throw new Exception('Email already registered', 409);
@@ -222,6 +224,28 @@ try {
         // === CATEGORIES (SatStash-compatible) ===
         case 'categories':
             echo json_encode(['data' => ['trading-cards', 'art', 'collectibles', 'bitcoin', 'accessories'], 'meta' => ['api_version' => 'v1']]);
+            break;
+
+        // === BLOCK HASH (for proof of ownership) ===
+        case 'current_block':
+            $ch = curl_init('https://mempool.space/api/blocks/tip/height');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            $height = curl_exec($ch);
+            curl_close($ch);
+            
+            $ch2 = curl_init('https://mempool.space/api/block-hash/' . $height);
+            curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch2, CURLOPT_TIMEOUT, 5);
+            $hash = curl_exec($ch2);
+            curl_close($ch2);
+            
+            echo json_encode([
+                'block_height' => (int)$height,
+                'block_hash' => $hash,
+                'timestamp' => time(),
+                'instruction' => 'Schreibe die Block-Height und deinen Benutzernamen auf einen Zettel, halte ihn neben die Karte und fotografiere beides zusammen.'
+            ]);
             break;
 
         default:

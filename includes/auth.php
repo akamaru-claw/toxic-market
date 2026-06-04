@@ -4,7 +4,7 @@
  * Nostr (NIP-07/46) + Email/Password
  */
 
-require_once __DIR__ . '/db.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
 
 session_start();
 
