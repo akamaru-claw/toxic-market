@@ -90,7 +90,7 @@ $priceEur = satsToEur($currentPrice, $prices['eur']);
                 <a href="/toxic-market/#cards">Karten</a>
                 <a href="/toxic-market/#auctions">Auktionen</a>
                 <?php if (isLoggedIn()): ?>
-                <span style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars(currentUser()['display_name']) ?></span>
+                <a href="/toxic-market/dashboard" style="color:var(--accent);text-decoration:none;font-size:13px;">📊</a> <span style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars(currentUser()['display_name']) ?></span>
                 <?php else: ?>
                 <button class="btn btn-outline btn-sm" onclick="window.location.href='/toxic-market/'">Anmelden</button>
                 <?php endif; ?>
