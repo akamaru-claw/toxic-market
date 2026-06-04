@@ -182,10 +182,11 @@ function renderCards() {
         const priceHTML = card.lowest_price ? `<div class="card-price">${card.lowest_price.toLocaleString()} sats</div>` : '';
         const listingsHTML = card.active_listings ? `<div class="card-meta">${card.active_listings} Angebot${card.active_listings > 1 ? 'e' : ''}</div>` : '';
         const total = card.generation === 3 ? 35 : 210;
+        const imgUrl = card.image_url || `/toxic-market/cards/card.svg.php?id=${card.id}&gen=${card.generation}&name=${encodeURIComponent(card.name)}&holo=${(card.holo_positions?.includes(card.id) || card.holo_positions?.includes(21)) ? '1' : '0'}`;
         
         return `
         <div class="card-item" onclick="showCard(${card.id})">
-            <div class="card-img">🧪</div>
+            <div class="card-img"><img src="${imgUrl}" alt="${card.name}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;" loading="lazy"></div>
             <div class="card-info">
                 <div class="card-name">${card.name}</div>
                 <div class="card-meta">${total} Stück</div>
@@ -294,7 +295,11 @@ function showCreateListing(cardId) {
     }
 }
 
-// Proof of Ownership
+// Auth check for protected pages
+function showAuthFirst() {
+    if (!currentUser) { showAuth(); return false; }
+    return true;
+}
 async function loadBlockInfo() {
     try {
         const res = await api('current_block');

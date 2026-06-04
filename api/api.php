@@ -108,6 +108,13 @@ try {
             $stmt->execute($params);
             $cards = $stmt->fetchAll();
             
+            // Add dynamic image URLs
+            foreach ($cards as &$card) {
+                if (empty($card['image_url'])) {
+                    $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . (in_array($card['id'], json_decode($card['holo_positions'], true) ?: []) ? '1' : '0');
+                }
+            }
+            
             // Decode JSON fields
             foreach ($cards as &$card) {
                 $card['holo_positions'] = json_decode($card['holo_positions'], true);
@@ -124,6 +131,11 @@ try {
             
             if (!$card) throw new Exception('Card not found', 404);
             $card['holo_positions'] = json_decode($card['holo_positions'], true);
+            
+            // Add dynamic image URL
+            if (empty($card['image_url'])) {
+                $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . (in_array(21, $card['holo_positions'] ?? []) ? '1' : '0');
+            }
             
             // Get variants
             $stmt2 = $db->prepare('SELECT * FROM card_variants WHERE template_id = ?');
