@@ -38,6 +38,8 @@ $gen_class = "gen-{$card['generation']}";
 $total_run = $card['generation'] == 3 ? 35 : 210;
 $holo_count = count($card['holo_positions']);
 $holo_pct = $total_run > 0 ? round(($holo_count / $total_run) * 100, 1) : 0;
+$isHolo = in_array($card['id'], $card['holo_positions']);
+$cardImageUrl = "/toxic-market/cards/card.svg.php?id={$card['id']}&gen={$card['generation']}&name=" . urlencode($card['name']) . "&holo=" . ($isHolo ? '1' : '0');
 
 // Get current block for proof
 $ch = curl_init('https://mempool.space/api/blocks/tip/height');
@@ -51,7 +53,12 @@ curl_close($ch);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toxic Market — <?= htmlspecialchars($card['name']) ?></title>
+    <title><?= htmlspecialchars($card['name']) ?> — Toxic Market</title>
+    <meta name="description" content="<?= htmlspecialchars($gen_label) ?> · <?= $total_run ?> Stück<?= $holo_count > 0 ? ' · ' . $holo_count . '× Holo' : '' ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($card['name']) ?> — Toxic Market">
+    <meta property="og:description" content="<?= htmlspecialchars($gen_label) ?> · <?= $total_run ?> Stück">
+    <meta property="og:image" content="https://ml-bets.com<?= $cardImageUrl ?>">
+    <meta name="twitter:card" content="summary_large_image">
     <link href="/toxic-market/css/toxic.css" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
 </head>
@@ -76,13 +83,7 @@ curl_close($ch);
         
         <div class="card-detail-grid">
             <div class="card-detail-image">
-                <div class="card-detail-placeholder">
-                    <span class="card-detail-number">#<?= $card['id'] ?></span>
-                    <span class="card-detail-icon">🧪</span>
-                    <?php if ($holo_count > 0): ?>
-                    <div class="holo-badge">✨ Holo #<?= implode(', #', $card['holo_positions']) ?>/<?= $total_run ?></div>
-                    <?php endif; ?>
-                </div>
+                <img src="<?= $cardImageUrl ?>" alt="<?= htmlspecialchars($card['name']) ?>" style="width:100%;border-radius:16px;" loading="lazy">
             </div>
             
             <div class="card-detail-info">

@@ -197,7 +197,10 @@ try {
             $hasMore = count($results) > $limit;
             $listings = array_slice($results, 0, $limit);
             
-            foreach ($listings as &$l) { $l['image_urls'] = json_decode($l['image_urls'], true); }
+            foreach ($listings as &$l) { 
+                $l['image_urls'] = json_decode($l['image_urls'], true);
+                $l['free_shipping'] = ($l['local_shipping_sats'] == 0 && $l['intl_shipping_sats'] == 0);
+            }
             
             echo json_encode([
                 'data' => $listings,

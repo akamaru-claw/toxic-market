@@ -55,12 +55,15 @@ function showLoggedIn() {
     const btn = document.getElementById('login-btn');
     const menu = document.getElementById('user-menu');
     if (btn) btn.classList.add('hidden');
-    if (menu) menu.classList.remove('hidden');
+    if (menu) {
+        menu.classList.remove('hidden');
+        menu.style.display = 'flex';
+    }
     const nameEl = document.getElementById('user-name');
     if (nameEl && currentUser) nameEl.textContent = currentUser.display_name;
     
     // Show create buttons when logged in
-    document.querySelectorAll('#create-listing-btn, #create-listing-btn-2, #create-auction-btn, #create-auction-btn-2').forEach(el => {
+    document.querySelectorAll('#create-listing-btn, #create-listing-btn-2, #create-auction-btn').forEach(el => {
         if (el) el.classList.remove('hidden');
     });
     document.querySelectorAll('#create-auction-btn-2').forEach(el => {
@@ -72,9 +75,32 @@ function showLoggedOut() {
     const btn = document.getElementById('login-btn');
     const menu = document.getElementById('user-menu');
     if (btn) btn.classList.remove('hidden');
-    if (menu) menu.classList.add('hidden');
-    const createBtn = document.getElementById('create-listing-btn');
-    if (createBtn) createBtn.classList.add('hidden');
+    if (menu) {
+        menu.classList.add('hidden');
+        menu.style.display = 'none';
+    }
+    document.querySelectorAll('#create-listing-btn, #create-listing-btn-2, #create-auction-btn').forEach(el => {
+        if (el) el.classList.add('hidden');
+    });
+    document.querySelectorAll('#create-auction-btn-2').forEach(el => {
+        if (el) el.style.display = 'none';
+    });
+}
+
+function showLoggedOut() {
+    const btn = document.getElementById('login-btn');
+    const menu = document.getElementById('user-menu');
+    if (btn) btn.classList.remove('hidden');
+    if (menu) {
+        menu.classList.add('hidden');
+        menu.style.display = 'none';
+    }
+    document.querySelectorAll('#create-listing-btn, #create-listing-btn-2, #create-auction-btn').forEach(el => {
+        if (el) el.classList.add('hidden');
+    });
+    document.querySelectorAll('#create-auction-btn-2').forEach(el => {
+        if (el) el.style.display = 'none';
+    });
 }
 
 function showAuth() { 
@@ -230,15 +256,18 @@ async function loadListings() {
         }
         grid.innerHTML = listings.map(l => {
             const images = JSON.parse(l.image_urls || '[]');
-            const imgUrl = images[0] || '';
+            const imgUrl = images[0] || `/toxic-market/cards/card.svg.php?id=${l.card_template_id}&gen=${l.generation || 1}&name=${encodeURIComponent(l.card_name || l.title)}&holo=0`;
+            const genClass = `gen-${l.generation || 1}`;
+            const genLabel = {1:'Genesis 2025',2:'Zitadelle 2026',3:'Remake EN'}[l.generation] || '';
             return `
             <div class="listing-item" style="cursor:pointer;" onclick="window.location.href='/toxic-market/listing/${l.id}'">
                 <div style="display:flex;gap:14px;">
-                    <div style="width:70px;height:95px;background:linear-gradient(145deg,#1a1a3a,#0e0e20);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;overflow:hidden;">
-                        ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;" alt="">` : '🧪'}
+                    <div style="width:80px;height:110px;background:linear-gradient(145deg,#1a1a3a,#0e0e20);border-radius:8px;overflow:hidden;flex-shrink:0;">
+                        <img src="${imgUrl}" style="width:100%;height:100%;object-fit:contain;" alt="${l.title}" loading="lazy">
                     </div>
                     <div style="flex:1;min-width:0;">
-                        <div class="listing-title">${l.title}</div>
+                        <span class="card-gen ${genClass}" style="font-size:9px;">${genLabel}</span>
+                        <div class="listing-title" style="margin-top:4px;">${l.title}</div>
                         <div class="listing-price">${l.price_sats.toLocaleString()} sats</div>
                         <div class="listing-meta">${l.condition_text} · ${l.seller_name}</div>
                         ${l.serial_number ? `<div class="listing-meta">#${l.serial_number}</div>` : ''}
@@ -258,18 +287,28 @@ async function loadAuctions() {
         const grid = document.getElementById('auctions-grid');
         if (!grid) return;
         if (auctions.length === 0) {
-            grid.innerHTML = '<p class="empty">Keine aktiven Auktionen.</p>';
+            grid.innerHTML = '<p class="empty">Keine aktiven Auktionen. <a href="/toxic-market/create-auction">Erstelle die erste!</a></p>';
             return;
         }
         grid.innerHTML = auctions.map(a => {
+            const images = JSON.parse(a.image_urls || '[]');
+            const imgUrl = images[0] || `/toxic-market/cards/card.svg.php?id=${a.card_template_id}&gen=${a.generation}&name=${encodeURIComponent(a.card_name || a.title)}&holo=0`;
             const ends = new Date(a.ends_at);
             const timeLeft = getTimeLeft(ends);
+            const genClass = `gen-${a.generation}`;
+            const genLabel = {1:'Genesis 2025',2:'Zitadelle 2026',3:'Remake EN'}[a.generation] || '';
             return `
-            <div class="listing-item">
-                <div class="listing-title">🔨 ${a.title}</div>
-                <div class="listing-price">${(a.current_price_sats || a.starting_price_sats).toLocaleString()} sats</div>
-                <div class="auction-timer">⏱ ${timeLeft}</div>
-                <div class="listing-meta">${a.bid_count || 0} Gebote · ${a.seller_name}</div>
+            <div class="listing-item" style="cursor:pointer;display:flex;gap:16px;" onclick="window.location.href='/toxic-market/auction/${a.id}'">
+                <div style="width:80px;height:110px;background:linear-gradient(145deg,#1a1a3a,#0e0e20);border-radius:8px;overflow:hidden;flex-shrink:0;">
+                    <img src="${imgUrl}" style="width:100%;height:100%;object-fit:contain;" alt="${a.title}" loading="lazy">
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <span class="card-gen ${genClass}" style="font-size:9px;">${genLabel}</span>
+                    <div class="listing-title" style="margin-top:4px;">🔨 ${a.title}</div>
+                    <div class="listing-price">${(a.current_price_sats || a.starting_price_sats).toLocaleString()} sats</div>
+                    <div class="auction-timer" style="font-size:13px;">⏱ ${timeLeft}</div>
+                    <div class="listing-meta">${a.bid_count || 0} Gebote · ${a.seller_name}</div>
+                </div>
             </div>`;
         }).join('');
     } catch (e) { console.error(e); }
