@@ -1,0 +1,170 @@
+<?php
+/**
+ * Toxic Market — Listing Detail Page
+ */
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
+
+$db = getDB();
+$listId = $_GET['id'] ?? '';
+if (!$listId) { header('Location: /toxic-market/'); exit; }
+
+$stmt = $db->prepare('SELECT l.*, ct.name as card_name, ct.generation, ct.description as card_desc, ct.holo_positions, ct.total_print_run,
+    u.display_name as seller_name, u.bio as seller_bio, u.id as seller_id, u.created_at as seller_since, u.total_sales
+    FROM listings l 
+    JOIN card_templates ct ON l.card_template_id = ct.id
+    JOIN users u ON l.seller_id = u.id
+    WHERE l.id = ?');
+$stmt->execute([$listId]);
+$listing = $stmt->fetch();
+if (!$listing) { header('Location: /toxic-market/'); exit; }
+
+$images = json_decode($listing['image_urls'], true) ?: [];
+$gen = [1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'][$listing['generation']] ?? '';
+$holo = json_decode($listing['holo_positions'], true) ?: [];
+$conditionLabels = ['mint'=>'Mint (M)','near_mint'=>'Near Mint (NM)','excellent'=>'Excellent (EX)','good'=>'Good (G)','played'=>'Played (P)'];
+$conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['condition_text'];
+?>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($listing['title']) ?> — Toxic Market</title>
+    <meta name="description" content="<?= htmlspecialchars($listing['description'] ?: $listing['card_desc']) ?>">
+    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
+</head>
+<body>
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
+            <div class="nav-links">
+                <a href="/toxic-market/#cards">Karten</a>
+                <a href="/toxic-market/#listings">Kaufen</a>
+                <?php if (isLoggedIn()): ?>
+                <span><?= htmlspecialchars(currentUser()['display_name']) ?></span>
+                <?php else: ?>
+                <button class="btn btn-outline btn-sm" onclick="showAuth()">Anmelden</button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width:1000px; padding: 30px 20px 60px;">
+        <a href="/toxic-market/" style="color:var(--text-muted);text-decoration:none;font-size:14px;">← Zurück</a>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px;" class="card-detail-grid">
+            <!-- Images -->
+            <div>
+                <div class="card-detail-image" style="width:100%;aspect-ratio:3/4;background:linear-gradient(145deg,#1a1a3a,#0e0e20);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:80px;overflow:hidden;border:1px solid var(--border);">
+                    <?php if (!empty($images) && $images[0]): ?>
+                    <img src="<?= htmlspecialchars($images[0]) ?>" style="width:100%;height:100%;object-fit:cover;" alt="<?= htmlspecialchars($listing['title']) ?>" id="main-image">
+                    <?php else: ?>
+                    🧪
+                    <?php endif; ?>
+                </div>
+                <?php if (count($images) > 1): ?>
+                <div style="display:flex;gap:8px;margin-top:12px;overflow-x:auto;">
+                    <?php foreach ($images as $i => $img): ?>
+                    <img src="<?= htmlspecialchars($img) ?>" style="width:60px;height:80px;object-fit:cover;border-radius:6px;border:2px solid var(--border);cursor:pointer;" 
+                         onclick="document.getElementById('main-image').src='<?= htmlspecialchars($img) ?>'" alt="Bild <?= $i+1 ?>">
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Details -->
+            <div>
+                <span class="card-gen gen-<?= $listing['generation'] ?>" style="margin-bottom:8px;"><?= $gen ?></span>
+                <h1 style="font-size:1.6rem;font-weight:800;margin:8px 0;"><?= htmlspecialchars($listing['title']) ?></h1>
+                
+                <div style="font-size:2.2rem;font-weight:900;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;margin:16px 0;">
+                    ₿ <?= number_format($listing['price_sats']) ?>
+                </div>
+
+                <!-- Condition & Serial -->
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;">
+                    <span style="background:var(--bg-elevated);border:1px solid var(--border);padding:4px 12px;border-radius:20px;font-size:12px;"><?= $conditionLabel ?></span>
+                    <?php if ($listing['serial_number']): ?>
+                    <span style="background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.2);padding:4px 12px;border-radius:20px;font-size:12px;color:var(--accent);">#<?= htmlspecialchars($listing['serial_number']) ?>/<?= $listing['total_print_run'] ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($holo) && $listing['serial_number'] && in_array((int)$listing['serial_number'], $holo)): ?>
+                    <span style="background:var(--holo-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700;font-size:12px;padding:4px 12px;">✨ HOLO</span>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Shipping -->
+                <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text);">🚚 Versand</div>
+                    <?php if ($listing['local_shipping_sats'] == 0 && $listing['intl_shipping_sats'] == 0): ?>
+                    <div style="color:var(--accent);font-weight:600;">Kostenloser Versand</div>
+                    <?php else: ?>
+                    <div style="font-size:13px;color:var(--text-muted);">🇩🇪 Deutschland: <?= $listing['local_shipping_sats'] > 0 ? number_format($listing['local_shipping_sats']).' sats' : 'Kostenlos' ?></div>
+                    <div style="font-size:13px;color:var(--text-muted);">🌍 International: <?= $listing['intl_shipping_sats'] > 0 ? number_format($listing['intl_shipping_sats']).' sats' : 'Kostenlos' ?></div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Description -->
+                <?php if ($listing['description']): ?>
+                <div style="margin:16px 0;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;">📝 Beschreibung</div>
+                    <p style="font-size:14px;color:var(--text-muted);line-height:1.6;"><?= nl2br(htmlspecialchars($listing['description'])) ?></p>
+                </div>
+                <?php endif; ?>
+
+                <!-- Proof of Ownership -->
+                <?php if ($listing['proof_block_height'] > 0): ?>
+                <div class="proof-box">
+                    <h3>🔍 Besitznachweis</h3>
+                    <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">
+                        Block #<?= number_format($listing['proof_block_height']) ?>
+                        <?php if ($listing['proof_verified']): ?>
+                        <span class="proof-verified"> ✅ Verifiziert</span>
+                        <?php else: ?>
+                        <span class="proof-unverified">⏳ Ausstehend</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($listing['proof_image_url']): ?>
+                    <img src="<?= htmlspecialchars($listing['proof_image_url']) ?>" style="max-width:100%;border-radius:8px;margin-top:8px;" alt="Besitznachweis">
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
+                <!-- Buy Button -->
+                <button class="btn btn-bitcoin btn-full" style="margin-top:24px;padding:16px;font-size:16px;font-weight:700;" onclick="alert('Zahlungssystem kommt in Phase 4!')">
+                    ⚡ Kaufen für <?= number_format($listing['price_sats']) ?> Sats
+                </button>
+
+                <p style="text-align:center;font-size:11px;color:var(--text-dim);margin-top:8px;">
+                    Du handelst direkt mit dem Verkäufer. Toxic Market verwahrt kein Geld.
+                </p>
+            </div>
+        </div>
+
+        <!-- Seller Info -->
+        <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:16px;padding:24px;margin-top:40px;">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <a href="/toxic-market/seller/<?= $listing['seller_id'] ?>" style="width:56px;height:56px;border-radius:50%;background:var(--holo-gradient);display:flex;align-items:center;justify-content:center;font-size:24px;text-decoration:none;">👤</a>
+                <div>
+                    <a href="/toxic-market/seller/<?= $listing['seller_id'] ?>" style="font-weight:700;font-size:16px;color:var(--text);text-decoration:none;"><?= htmlspecialchars($listing['seller_name']) ?></a>
+                    <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">
+                        Seit <?= date('M Y', strtotime($listing['seller_since'])) ?> · <?= $listing['total_sales'] ?? 0 ?> Verkäufe
+                    </div>
+                </div>
+            </div>
+            <?php if ($listing['seller_bio']): ?>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:12px;"><?= htmlspecialchars($listing['seller_bio']) ?></p>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>🧪 Toxic Market · <strong>Kein Custody, keine Haftung.</strong> P2P-Marktplatz.</p>
+        </div>
+    </footer>
+
+    <script src="/toxic-market/js/toxic.js"></script>
+</body>
+</html>

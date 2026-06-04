@@ -1,14 +1,20 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Block access to sensitive directories
-    RewriteRule ^data/.*\.db$ - [F,L]
+    # Block access to sensitive files
+    RewriteRule ^data/ - [F,L]
     RewriteRule ^includes/ - [F,L]
     
     # Card detail pages
     RewriteRule ^card/([0-9]+)$ /toxic-market/card.html?id=$1 [QSA,L]
+    # Listing detail pages
+    RewriteRule ^listing/([a-zA-Z0-9]+)$ /toxic-market/listing.html?id=$1 [QSA,L]
+    # Seller profile pages
+    RewriteRule ^seller/([0-9]+)$ /toxic-market/seller.html?id=$1 [QSA,L]
     # Create listing page
     RewriteRule ^create$ /toxic-market/create.html [QSA,L]
+    # Image upload directory
+    RewriteRule ^uploads/ - [L]
     
     # SPA routing (only for non-existing files)
     RewriteCond %{REQUEST_FILENAME} !-f

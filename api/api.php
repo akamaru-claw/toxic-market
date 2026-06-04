@@ -248,6 +248,135 @@ try {
             ]);
             break;
 
+        // === LISTING DETAIL ===
+        case 'listing':
+            $id = $_GET['id'] ?? '';
+            $stmt = $db->prepare('SELECT l.*, ct.name as card_name, ct.generation, ct.description as card_desc, ct.holo_positions, ct.total_print_run,
+                u.display_name as seller_name, u.bio as seller_bio, u.id as seller_id, u.created_at as seller_since, u.total_sales
+                FROM listings l 
+                JOIN card_templates ct ON l.card_template_id = ct.id
+                JOIN users u ON l.seller_id = u.id
+                WHERE l.id = ?');
+            $stmt->execute([$id]);
+            $listing = $stmt->fetch();
+            if (!$listing) throw new Exception('Listing not found', 404);
+            $listing['image_urls'] = json_decode($listing['image_urls'], true);
+            $listing['holo_positions'] = json_decode($listing['holo_positions'], true);
+            echo json_encode($listing);
+            break;
+
+        // === SELLER PROFILE ===
+        case 'seller':
+            $id = (int)($_GET['id'] ?? 0);
+            $stmt = $db->prepare('SELECT id, display_name, bio, avatar_url, reputation_score, total_sales, total_purchases, created_at FROM users WHERE id = ?');
+            $stmt->execute([$id]);
+            $seller = $stmt->fetch();
+            if (!$seller) throw new Exception('Seller not found', 404);
+            
+            $stmt2 = $db->prepare('SELECT l.*, ct.name as card_name, ct.generation, ct.holo_positions
+                FROM listings l JOIN card_templates ct ON l.card_template_id = ct.id
+                WHERE l.seller_id = ? AND l.is_sold = 0 ORDER BY l.created_at DESC');
+            $stmt2->execute([$id]);
+            $seller['listings'] = $stmt2->fetchAll();
+            foreach ($seller['listings'] as &$l) {
+                $l['image_urls'] = json_decode($l['image_urls'], true);
+                $l['holo_positions'] = json_decode($l['holo_positions'], true);
+            }
+            echo json_encode($seller);
+            break;
+
+        // === IMAGE UPLOAD ===
+        case 'upload_image':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception('No file uploaded', 400);
+            }
+            $file = $_FILES['image'];
+            $maxSize = 5 * 1024 * 1024; // 5MB
+            if ($file['size'] > $maxSize) throw new Exception('File too large (max 5MB)', 400);
+            
+            $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!in_array($file['type'], $allowed)) throw new Exception('Only JPG, PNG, WebP allowed', 400);
+            
+            $ext = match($file['type']) {
+                'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'
+            };
+            $filename = bin2hex(random_bytes(8)) . '_' . $user['id'] . '.' . $ext;
+            $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/uploads/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $filepath = $uploadDir . $filename;
+            
+            if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+                throw new Exception('Upload failed', 500);
+            }
+            
+            $url = '/toxic-market/uploads/' . $filename;
+            echo json_encode(['success' => true, 'url' => $url, 'filename' => $filename]);
+            break;
+
+        // === UPDATE LISTING ===
+        case 'update_listing':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? '';
+            
+            $stmt = $db->prepare('SELECT * FROM listings WHERE id = ? AND seller_id = ?');
+            $stmt->execute([$id, $user['id']]);
+            $listing = $stmt->fetch();
+            if (!$listing) throw new Exception('Listing not found or not yours', 404);
+            
+            $fields = []; $values = [];
+            foreach (['title', 'description', 'price_sats', 'condition_text', 'serial_number', 'local_shipping_sats', 'intl_shipping_sats'] as $field) {
+                if (isset($data[$field])) {
+                    $fields[] = "$field = ?";
+                    $values[] = $data[$field];
+                }
+            }
+            if (isset($data['image_urls'])) {
+                $fields[] = "image_urls = ?";
+                $values[] = json_encode($data['image_urls']);
+            }
+            if (isset($data['proof_image_url'])) {
+                $fields[] = "proof_image_url = ?";
+                $values[] = $data['proof_image_url'];
+            }
+            
+            if (!empty($fields)) {
+                $values[] = $id;
+                $db->prepare('UPDATE listings SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($values);
+            }
+            echo json_encode(['success' => true]);
+            break;
+
+        // === DELETE LISTING ===
+        case 'delete_listing':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? '';
+            
+            $stmt = $db->prepare('SELECT * FROM listings WHERE id = ? AND seller_id = ? AND is_sold = 0');
+            $stmt->execute([$id, $user['id']]);
+            if (!$stmt->fetch()) throw new Exception('Listing not found or not yours', 404);
+            
+            $db->prepare('DELETE FROM listings WHERE id = ?')->execute([$id]);
+            echo json_encode(['success' => true]);
+            break;
+
+        // === MY LISTINGS ===
+        case 'my_listings':
+            $user = requireAuth();
+            $stmt = $db->prepare('SELECT l.*, ct.name as card_name, ct.generation 
+                FROM listings l JOIN card_templates ct ON l.card_template_id = ct.id
+                WHERE l.seller_id = ? ORDER BY l.created_at DESC');
+            $stmt->execute([$user['id']]);
+            $listings = $stmt->fetchAll();
+            foreach ($listings as &$l) { $l['image_urls'] = json_decode($l['image_urls'], true); }
+            echo json_encode(['data' => $listings]);
+            break;
+
         default:
             throw new Exception('Unknown action: ' . $action, 400);
     }

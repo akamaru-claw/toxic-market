@@ -1,27 +1,61 @@
 # Toxic Market — Entwicklungs-Tagebuch
 
-## 2026-06-04 — Projekt-Start
+## 2026-06-04 — Phase 3: Seller, Listing-Detail, Upload
 
-### Analyse SatStash.io
-- **Typ:** Bitcoin-Marktplatz für physische Güter
-- **Features:** Auktionen (zeitlich begrenzt + Bid-Deposit), Fixed-Price Listings, Seller-Stores, Escrow
-- **Tech:** Next.js Frontend, Public REST API v1 (OpenAPI), Cursor-basierte Paginierung
-- **Zahlungen:** Onchain + Lightning (Deposits), Credit Card / Afterpay / Klarna (Final)
-- **Status:** Wird offline genommen (laut Kiba, nach Gespräch mit Entwicklern)
+### Neue Features
+- **Verkäufer-Profil** (`/seller/{id}`): Avatar, Name, Bio, Statistiken, alle aktiven Angebote
+- **Listing-Detailseite** (`/listing/{id}`): Großes Bild, Preis, Zustand, Seriennummer, Versand, Verkäufer-Info, Besitznachweis
+- **Bild-Upload**: Drag & Drop + File Input, max 5 Bilder pro Angebot + 1 Proof-Bild
+- **Listing verwalten**: `update_listing`, `delete_listing`, `my_listings` API-Endpunkte
+- **Listing-Detail API**: `/api?action=listing&id=X`, `/api?action=seller&id=X`
 
-### Karten-Situation (von Kiba)
-- **Gen 1 (Zitadelle 2025):** 21 Motive × 210 Stück, #21/210 = Holo, komplett ausverkauft
-- **Gen 2 (Zitadelle 2026):** 21 neue Motive × 210 Stück, Holo bei #1, #21, #210
-- **Gen 1 Remakes:** 35 engl. Nachdrucke je der 21 Gen-1-Motive
-- **Specials:** Error-Karten existieren
+### API-Endpunkte (neu)
+- `listing` — Listing-Detail mit Verkäufer-Info
+- `seller` — Seller-Profil mit aktiven Angeboten
+- `upload_image` — Bild-Upload (JPG/PNG/WebP, max 5MB)
+- `update_listing` — Listing bearbeiten (nur eigene)
+- `delete_listing` — Listing löschen (nur eigene)
+- `my_listings` — Eigene Angebote auflisten
 
-### Entscheidungen
-- Platform Fokus: **Nur Toxic Booster / MX12ART Karten** (kein General-Marketplace)
-- Auth: Nostr + Email (wie Kickstr)
-- Hosting: Strato (ml-bets.com)
-- Backend: PHP 8.2 + SQLite (Strato-kompatibel)
-- Frontend: Modern, Mobile-first
-- Zahlungen: Lightning (LNBits) als Priority
+### Design
+- Premium Dark Theme mit Glasmorphismus
+- Holographic Gradient-Effekte
+- Inter + JetBrains Mono Fonts
+- Drag & Drop Bild-Upload mit Preview
+- Responsive Mobile-First Design
 
-### GitHub-Repo erstellt
-- https://github.com/akamaru-claw/toxic-market
+### Bugfixes
+- **CSS-Pfad-Problem:** Strato Webroot = `/public/`, alle Pfade müssen `/toxic-market/` als Prefix haben
+- **Strato-Cache:** CSS/JS-Dateien werden gecached, neue Dateinamen erzwingen Cache-Bypass
+- **SFTP-Upload:** Datei zuerst `rm`, dann `put` um sicherzustellen dass die neue Version greift
+
+## 2026-06-04 — Phase 2: Card Detail + Create Listing
+
+### Neue Features
+- Karten-Detailseite (`/card/{id}`)
+- Angebot erstellen (`/create`)
+- Besitznachweis (Block-Height + Username)
+- Disclaimer-Banner auf jeder Seite
+
+### API-Endpunkte
+- `card` — Karten-Detail mit Varianten, Listings und Auktionen
+- `create_listing` — Neues Angebot erstellen
+- `current_block` — Aktuelle Bitcoin Block-Height für Proof-of-Ownership
+
+### Datenbank-Schema
+- Beweisspalten in `listings`: `proof_image_url`, `proof_block_height`, `proof_block_hash`, `proof_verified`
+- `proof_verifications` Tabelle für Community-Verifikation
+
+## 2026-06-04 — Projekt-Start + Phase 1 (MVP)
+
+### SatStash Analyse
+- Typ: Bitcoin-Marktplatz für physische Güter
+- Features: Auktionen, Fixed-Price, Escrow, Seller-Stores
+- Referenz für API-Design und UX
+
+### Architektur-Entscheidungen
+- PHP + SQLite (Strato-kompatibel, kein Node.js verfügbar)
+- Vanilla JS Frontend (kein Framework für einfaches Hosting)
+- Auth: Email/Password + Nostr
+- Proof-of-Ownership via Bitcoin Block-Height
+- Bilder: Lokaler Upload (kein S3/IPFS nötig)
