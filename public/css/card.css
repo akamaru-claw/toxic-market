@@ -1,0 +1,26 @@
+/* Card detail page */
+.card-detail { padding: 30px 0 60px; }
+.back-link { color: var(--text-muted); font-size: 14px; display: inline-block; margin-bottom: 20px; }
+.back-link:hover { color: var(--accent); text-decoration: none; }
+.card-detail-grid { display: grid; grid-template-columns: 350px 1fr; gap: 40px; }
+.card-detail-placeholder { width: 100%; aspect-ratio: 3/4; background: var(--card); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border: 2px solid var(--border); }
+.card-detail-number { position: absolute; top: 16px; left: 16px; background: var(--accent); color: #000; font-weight: 700; padding: 4px 12px; border-radius: 12px; font-size: 13px; }
+.card-detail-icon { font-size: 80px; }
+.holo-badge { position: absolute; bottom: 16px; background: var(--holo); color: #000; font-weight: 700; padding: 6px 14px; border-radius: 12px; font-size: 12px; }
+.card-detail-info h1 { font-size: 2rem; margin: 8px 0; }
+.card-artist { color: var(--text-muted); margin-bottom: 20px; }
+.card-stats { display: flex; gap: 24px; margin: 20px 0; padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.stat-item { text-align: center; }
+.stat-value { display: block; font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+.holo-text { background: var(--holo); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.card-description { color: var(--text-muted); margin: 16px 0; line-height: 1.7; }
+.card-section { margin: 24px 0; }
+.card-section h2 { font-size: 1.3rem; margin-bottom: 16px; }
+.empty-section { background: var(--card); padding: 24px; border-radius: 12px; text-align: center; }
+.proof-info { font-size: 12px; color: var(--accent); margin: 4px 0; }
+
+@media (max-width: 768px) {
+    .card-detail-grid { grid-template-columns: 1fr; }
+    .card-detail-placeholder { max-width: 300px; margin: 0 auto; }
+}

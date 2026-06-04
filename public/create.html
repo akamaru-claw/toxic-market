@@ -1,0 +1,179 @@
+<?php
+/**
+ * Toxic Market — Create Listing Page
+ */
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
+
+if (!isLoggedIn()) {
+    header('Location: /toxic-market/');
+    exit;
+}
+
+$db = getDB();
+$user = currentUser();
+$cards = $db->query('SELECT * FROM card_templates ORDER BY generation, id')->fetchAll();
+$block_height = file_get_contents('https://mempool.space/api/blocks/tip/height') ?: '?';
+?>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toxic Market — Angebot erstellen</title>
+    <link href="/toxic-market/css/app.css" rel="stylesheet">
+    <link href="/toxic-market/css/card.css" rel="stylesheet">
+</head>
+<body>
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
+            <div class="nav-links">
+                <a href="/toxic-market/#cards">Karten</a>
+                <a href="/toxic-market/#listings">Kaufen</a>
+                <span id="user-name-top"><?= htmlspecialchars($user['display_name']) ?></span>
+                <a href="/toxic-market/api/api.php?action=logout" class="btn btn-sm btn-outline">Abmelden</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width:700px; padding: 30px 20px 60px;">
+        <a href="/toxic-market/" class="back-link">← Zurück</a>
+        <h1>🏷️ Angebot erstellen</h1>
+        
+        <div class="disclaimer-box" style="background:#2a1a00;border:1px solid var(--bitcoin);border-radius:8px;padding:12px;margin:16px 0;font-size:13px;">
+            ⚠️ <strong>Wichtig:</strong> Du handelst direkt mit dem Käufer. Toxic Market verwahrt kein Geld und übernimmt keine Haftung. Lade einen Besitznachweis hoch, um Vertrauen zu schaffen.
+        </div>
+
+        <form id="create-listing" onsubmit="submitListing(event)" style="margin-top:20px;">
+            <div class="form-group">
+                <label>Karte *</label>
+                <select id="card-id" required style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <option value="">— Karte auswählen —</option>
+                    <?php foreach ($cards as $c): ?>
+                    <?php $gen = [1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'][$c['generation']] ?? ''; ?>
+                    <option value="<?= $c['id'] ?>"><?= $gen ?>: <?= htmlspecialchars($c['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Titel *</label>
+                <input type="text" id="listing-title" required placeholder="z.B. Genesis #1 The Beginning - MINT" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+            </div>
+
+            <div class="form-group">
+                <label>Beschreibung</label>
+                <textarea id="listing-desc" rows="3" placeholder="Zustand, Besonderheiten, etc." style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;resize:vertical;"></textarea>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>Preis (Sats) *</label>
+                    <input type="number" id="listing-price" required min="1" placeholder="5000" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                </div>
+                <div class="form-group">
+                    <label>Zustand</label>
+                    <select id="listing-condition" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                        <option value="mint">Mint (M)</option>
+                        <option value="near_mint">Near Mint (NM)</option>
+                        <option value="excellent">Excellent (EX)</option>
+                        <option value="good">Good (G)</option>
+                        <option value="played">Played (P)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Seriennummer</label>
+                    <input type="text" id="listing-serial" placeholder="042/210" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>Versand DE (Sats)</label>
+                    <input type="number" id="listing-local-ship" min="0" value="0" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                </div>
+                <div class="form-group">
+                    <label>Versand International (Sats)</label>
+                    <input type="number" id="listing-intl-ship" min="0" value="0" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:24px;">
+                <label>📸 Bilder (max. 5)</label>
+                <input type="file" id="listing-images" accept="image/*" multiple style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                <small style="color:var(--text-muted);">JPG/PNG, max 5MB pro Bild. Zeige die Karte + Seriennummer.</small>
+            </div>
+
+            <div class="proof-box" style="margin-top:24px;">
+                <h3>🔍 Besitznachweis (Empfohlen)</h3>
+                <p>Schreibe <strong>Block #<?= $block_height ?> + deinen Benutzernamen "<?= htmlspecialchars($user['display_name']) ?>"</strong> auf einen Zettel und fotografiere ihn neben der Karte.</p>
+                <div class="proof-hash-box">
+                    <strong>Aktueller Block:</strong> #<?= $block_height ?><br>
+                    <strong>Dein Zettel-Text:</strong> "Block <?= $block_height ?> — <?= htmlspecialchars($user['display_name']) ?>"
+                </div>
+                <div class="form-group">
+                    <label>Besitznachweis-Bild</label>
+                    <input type="file" id="proof-image" accept="image/*" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" style="margin-top:24px;padding:14px;font-size:16px;">
+                🏷️ Angebot veröffentlichen
+            </button>
+            <p id="submit-error" class="error hidden" style="margin-top:12px;"></p>
+            <p id="submit-success" class="hidden" style="margin-top:12px;color:var(--accent);text-align:center;font-size:15px;"></p>
+        </form>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>🧪 Toxic Market · <strong>Kein Custody, keine Haftung.</strong> P2P-Marktplatz.</p>
+        </div>
+    </footer>
+
+    <script src="/toxic-market/js/app.js"></script>
+    <script>
+    async function submitListing(e) {
+        e.preventDefault();
+        const data = {
+            card_template_id: document.getElementById('card-id').value,
+            title: document.getElementById('listing-title').value,
+            description: document.getElementById('listing-desc').value,
+            price_sats: parseInt(document.getElementById('listing-price').value),
+            condition: document.getElementById('listing-condition').value,
+            serial_number: document.getElementById('listing-serial').value,
+            local_shipping_sats: parseInt(document.getElementById('listing-local-ship').value) || 0,
+            intl_shipping_sats: parseInt(document.getElementById('listing-intl-ship').value) || 0,
+            proof_block_height: <?= $block_height === '?' ? '0' : $block_height ?>,
+        };
+
+        if (!data.card_template_id || !data.title || !data.price_sats) {
+            document.getElementById('submit-error').textContent = 'Bitte alle Pflichtfelder ausfüllen.';
+            document.getElementById('submit-error').classList.remove('hidden');
+            return;
+        }
+
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=create_listing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.success) {
+                document.getElementById('submit-success').textContent = '✅ Angebot erstellt! Weiterleitung...';
+                document.getElementById('submit-success').classList.remove('hidden');
+                setTimeout(() => { window.location.href = '/toxic-market/'; }, 2000);
+            } else {
+                document.getElementById('submit-error').textContent = result.error || 'Fehler beim Erstellen';
+                document.getElementById('submit-error').classList.remove('hidden');
+            }
+        } catch (err) {
+            document.getElementById('submit-error').textContent = 'Server-Fehler';
+            document.getElementById('submit-error').classList.remove('hidden');
+        }
+    }
+    </script>
+</body>
+</html>

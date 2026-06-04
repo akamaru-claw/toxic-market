@@ -171,12 +171,7 @@ function setupFilters() {
 }
 
 async function showCard(id) {
-    try {
-        const card = await api('card', { id });
-        // Navigate to card detail (TODO: create card detail page)
-        console.log('Card:', card);
-        alert(`Karte: ${card.name}\n\nDetail-Seite kommt in Phase 2!`);
-    } catch (e) { console.error(e); }
+    window.location.href = '/toxic-market/card/' + id;
 }
 
 // Listings
@@ -236,9 +231,13 @@ function getTimeLeft(date) {
     return `${mins}m`;
 }
 
-function showCreateListing() {
+function showCreateListing(cardId) {
     if (!currentUser) { showAuth(); return; }
-    alert('Listing-Formular kommt in Phase 2!');
+    if (cardId) {
+        window.location.href = '/toxic-market/create?card=' + cardId;
+    } else {
+        window.location.href = '/toxic-market/create';
+    }
 }
 
 // Proof of Ownership

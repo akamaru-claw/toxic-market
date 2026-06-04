@@ -5,10 +5,15 @@
     RewriteRule ^data/.*\.db$ - [F,L]
     RewriteRule ^includes/ - [F,L]
     
+    # Card detail pages
+    RewriteRule ^card/([0-9]+)$ /toxic-market/card.html?id=$1 [QSA,L]
+    # Create listing page
+    RewriteRule ^create$ /toxic-market/create.html [QSA,L]
+    
     # SPA routing (only for non-existing files)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.html [QSA,L]
+    RewriteRule ^(.*)$ /toxic-market/index.html [QSA,L]
 </IfModule>
 
 # Cache static assets
