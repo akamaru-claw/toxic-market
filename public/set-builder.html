@@ -274,9 +274,9 @@ $rarityColors = [
 
         <!-- Generation Tabs -->
         <div class="gen-tabs">
-            <span class="gen-tab <?= !$generation ? 'active' : '' ?>" onclick="filterGen(0)">Alle <span class="tab-count"><?= $totalCards ?></span></span>
+            <span class="gen-tab <?= !$generation ? 'active' : '' ?>" onclick="filterGenLocal(0)">Alle <span class="tab-count"><?= $totalCards ?></span></span>
             <?php foreach ([1=>'🧪 Genesis 2025',2=>'🏰 Zitadelle 2026',3=>'🌍 Remake EN'] as $g => $label): ?>
-            <span class="gen-tab <?= $generation == $g ? 'active' : '' ?>" onclick="filterGen(<?= $g ?>)"><?= $label ?> <span class="tab-count"><?= $genCounts[$g] ?? 0 ?></span></span>
+            <span class="gen-tab <?= $generation == $g ? 'active' : '' ?>" onclick="filterGenLocal(<?= $g ?>)"><?= $label ?> <span class="tab-count"><?= $genCounts[$g] ?? 0 ?></span></span>
             <?php endforeach; ?>
         </div>
 
@@ -457,13 +457,40 @@ $rarityColors = [
         });
     }
 
-    function filterGen(gen) {
+    function filterGenLocal(gen) {
         currentGen = gen;
-        if (gen === 0) {
-            location.href = '/toxic-market/set-builder';
-        } else {
-            location.href = '/toxic-market/set-builder?gen=' + gen;
-        }
+        // Update tab styling
+        document.querySelectorAll('.gen-tab').forEach((tab, i) => {
+            tab.classList.toggle('active', (gen === 0 && i === 0) || (gen === i));
+        });
+        // Filter cards
+        document.querySelectorAll('.set-card, .checklist-row').forEach(el => {
+            const cardGen = parseInt(el.dataset.gen);
+            if (gen === 0) {
+                el.style.display = '';
+            } else if (cardGen !== gen) {
+                el.style.display = 'none';
+            } else {
+                el.style.display = '';
+            }
+        });
+        // Re-apply owned/missing/holo filter
+        setFilter(currentFilter);
+        // Update stats
+        let visibleCount = 0;
+        let ownedCount = 0;
+        document.querySelectorAll('.set-card:not([style*="display: none"])').forEach(el => {
+            visibleCount++;
+            if (el.classList.contains('owned')) ownedCount++;
+        });
+        document.getElementById('owned-count').textContent = ownedCount;
+        document.getElementById('missing-count').textContent = visibleCount - ownedCount;
+        const pct = visibleCount > 0 ? Math.round((ownedCount / visibleCount) * 100) : 0;
+        document.getElementById('completion-pct').textContent = pct + '%';
+        document.getElementById('completion-badge').textContent = pct + '%';
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-fill').textContent = pct + '%';
+        document.getElementById('total-cards').textContent = visibleCount;
     }
 
     function exportCollection() {

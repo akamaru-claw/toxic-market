@@ -65,6 +65,20 @@ function toggleMobileNav() {
     if (nav) nav.classList.toggle('hidden');
 }
 
+// Navigate to card detail page
+function showCard(cardId) {
+    window.location.href = '/toxic-market/card/' + cardId;
+}
+
+// Navigate to create listing page
+function showCreateListing(cardId) {
+    if (cardId) {
+        window.location.href = '/toxic-market/create?card=' + cardId;
+    } else {
+        window.location.href = '/toxic-market/create';
+    }
+}
+
 // API helper
 async function api(action, data = null, method = 'GET') {
     const url = data && method === 'GET' 
