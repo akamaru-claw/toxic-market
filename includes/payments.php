@@ -1,213 +1,144 @@
 <?php
 /**
- * Toxic Market — Lightning Payment Integration
+ * Toxic Market — P2P Payment System
  * 
- * Supports: LNBits (primary), manual BOLT11, on-chain fallback
+ * NO CUSTODY. The platform NEVER holds funds.
  * 
- * Setup: Create a .env.payments file or set LNBits URL + API key
- * in the admin settings. For now, uses manual payment confirmation.
+ * Payment flow:
+ * 1. Buyer clicks "Kaufen" → Platform creates a transaction record
+ * 2. Seller's payment info (Lightning address, BOLT12, on-chain) is shown to buyer
+ * 3. Buyer pays directly to seller's wallet
+ * 4. Buyer confirms payment on platform
+ * 5. Seller confirms receipt
+ * 6. Transaction complete → Listing marked as sold
+ * 
+ * The platform only tracks the state — money flows P2P only.
  */
 
-define('PAYMENTS_CONFIG', $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/payments_config.json');
-
-class LightningPayments {
-    private ?string $lnbitsUrl = null;
-    private ?string $lnbitsKey = null;
-    private bool $sandboxMode = true; // Manual confirmation until LNBits is configured
-    
-    public function __construct() {
-        // Try to load LNBits config
-        $configFile = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/lnbits_config.json';
-        if (file_exists($configFile)) {
-            $config = json_decode(file_get_contents($configFile), true);
-            if ($config && isset($config['url']) && isset($config['api_key'])) {
-                $this->lnbitsUrl = rtrim($config['url'], '/');
-                $this->lnbitsKey = $config['api_key'];
-                $this->sandboxMode = $config['sandbox'] ?? true;
-            }
-        }
-    }
+class P2PPayments {
     
     /**
-     * Check if LNBits is configured and reachable
+     * Initiate a purchase — creates transaction record, reveals seller's payment info
      */
-    public function isAvailable(): bool {
-        return $this->lnbitsUrl !== null && $this->lnbitsKey !== null;
-    }
-    
-    /**
-     * Create a Lightning invoice
-     * Returns: ['payment_hash' => ..., 'payment_request' => ..., 'expires_at' => ...]
-     */
-    public function createInvoice(int $amountSats, string $description, string $externalId = ''): array {
-        if (!$this->isAvailable()) {
-            return $this->createManualInvoice($amountSats, $description, $externalId);
-        }
+    public function initiatePurchase(int $buyerId, string $listingId): array {
+        $db = getDB();
         
-        $data = [
-            'out' => false,
-            'amount' => $amountSats,
-            'memo' => substr($description, 0, 100),
-            'expiry' => 3600, // 1 hour
-        ];
-        if ($externalId) {
-            $data['unit'] = 'sat';
-            $data['internal'] = false;
-        }
+        // Get listing + seller info
+        $stmt = $db->prepare('SELECT l.*, u.display_name as seller_name, u.id as seller_id
+            FROM listings l JOIN users u ON l.seller_id = u.id WHERE l.id = ? AND l.is_sold = 0');
+        $stmt->execute([$listingId]);
+        $listing = $stmt->fetch();
         
-        $ch = curl_init($this->lnbitsUrl . '/api/v1/payments');
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($data),
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'X-Api-Key: ' . $this->lnbitsKey,
-            ],
-            CURLOPT_TIMEOUT => 10,
-        ]);
+        if (!$listing) return ['success' => false, 'error' => 'Angebot nicht gefunden'];
+        if ($listing['seller_id'] == $buyerId) return ['success' => false, 'error' => 'Du kannst nicht dein eigenes Angebot kaufen'];
         
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        // Check for existing pending transaction
+        $stmt2 = $db->prepare('SELECT id FROM transactions WHERE listing_id = ? AND status IN (?, ?) LIMIT 1');
+        $stmt2->execute([$listingId, 'pending_buyer', 'pending_seller']);
+        if ($stmt2->fetch()) return ['success' => false, 'error' => 'Es gibt bereits eine ausstehende Zahlung für dieses Angebot'];
         
-        if ($httpCode === 201 && $response) {
-            $invoice = json_decode($response, true);
-            return [
-                'success' => true,
-                'payment_hash' => $invoice['payment_hash'] ?? '',
-                'payment_request' => $invoice['payment_request'] ?? '',
-                'amount_sats' => $amountSats,
-                'description' => $description,
-                'expires_at' => date('Y-m-d H:i:s', time() + 3600),
-                'source' => 'lnbits',
-            ];
-        }
+        // Create transaction record
+        $txId = bin2hex(random_bytes(16));
+        $totalSats = $listing['price_sats'];
         
-        // Fallback to manual
-        return $this->createManualInvoice($amountSats, $description, $externalId);
-    }
-    
-    /**
-     * Create on-chain invoice (returns BTC address)
-     */
-    public function createOnchainInvoice(int $amountSats, string $description, string $externalId = ''): array {
-        // For now, generate a static address from config or return manual
-        $configFile = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/payments_config.json';
-        $address = null;
-        if (file_exists($configFile)) {
-            $config = json_decode(file_get_contents($configFile), true);
-            $address = $config['onchain_address'] ?? null;
-        }
-        
-        if (!$address) {
-            // Fallback to manual with instructions
-            return array_merge(
-                $this->createManualInvoice($amountSats, $description, $externalId),
-                [
-                    'payment_method' => 'onchain',
-                    'instructions' => 'On-chain-Zahlung: Bitte Verkäufer kontaktieren für BTC-Adresse.',
-                ]
-            );
-        }
+        $db->prepare('INSERT INTO transactions (id, listing_id, payer_id, payee_id, type, amount_sats, status, payment_hash, payment_request) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$txId, $listingId, $buyerId, $listing['seller_id'], 'p2p_lightning', $totalSats, 'pending_buyer', $txId, '']);
         
         return [
             'success' => true,
-            'payment_hash' => $address,
-            'payment_request' => $address,
-            'amount_sats' => $amountSats,
-            'description' => $description,
-            'expires_at' => date('Y-m-d H:i:s', time() + 86400 * 3),
-            'source' => 'onchain',
-            'btc_address' => $address,
-            'instructions' => "Sende {$amountSats} sats an: {$address}",
-        ];
-    }
-    /**
-     * Check if a payment has been settled
-     */
-    public function checkPayment(string $paymentHash): array {
-        if (!$this->isAvailable()) {
-            return ['paid' => false, 'source' => 'manual', 'message' => 'Manual confirmation required'];
-        }
-        
-        $ch = curl_init($this->lnbitsUrl . '/api/v1/payments/' . $paymentHash);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [
-                'X-Api-Key: ' . $this->lnbitsKey,
-            ],
-            CURLOPT_TIMEOUT => 10,
-        ]);
-        
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        $payment = json_decode($response, true);
-        return [
-            'paid' => $payment['paid'] ?? false,
-            'source' => 'lnbits',
-            'amount' => $payment['amount'] ?? 0,
-            'details' => $payment,
+            'transaction_id' => $txId,
+            'amount_sats' => $totalSats,
+            'seller_name' => $listing['seller_name'],
+            'message' => 'Zahle direkt an den Verkäufer. Bestätige danach die Zahlung hier.',
         ];
     }
     
     /**
-     * Manual invoice (when LNBits is not configured)
-     * Buyer pays directly to seller's Lightning address or wallet
+     * Buyer confirms they sent payment
      */
-    public function createManualInvoice(int $amountSats, string $description, string $externalId = ''): array {
-        $db = getDB();
-        $id = bin2hex(random_bytes(16));
-        
-        // Store transaction record
-        $stmt = $db->prepare('INSERT INTO transactions (id, type, amount_sats, status, payment_hash, payment_request) VALUES (?, ?, ?, ?, ?, ?)');
-        $stmt->execute([
-            $id,
-            'manual_invoice',
-            $amountSats,
-            'pending_manual',
-            $id, // Use as reference
-            '', // No BOLT11 for manual
-        ]);
-        
-        return [
-            'success' => true,
-            'payment_hash' => $id,
-            'payment_request' => '', // No BOLT11 - manual payment
-            'amount_sats' => $amountSats,
-            'description' => $description,
-            'expires_at' => date('Y-m-d H:i:s', time() + 86400 * 7), // 7 days for manual
-            'source' => 'manual',
-            'transaction_id' => $id,
-            'instructions' => 'Zahle direkt an den Verkäufer per Lightning. Bestätige die Zahlung imListing.',
-        ];
-    }
-    
-    /**
-     * Confirm a manual payment (seller confirms they received payment)
-     */
-    public function confirmManualPayment(string $transactionId, int $confirmerId): array {
+    public function buyerConfirms(string $txId, int $buyerId, ?string $paymentProof = null): array {
         $db = getDB();
         
-        $stmt = $db->prepare('SELECT * FROM transactions WHERE id = ? AND status = ?');
-        $stmt->execute([$transactionId, 'pending_manual']);
+        $stmt = $db->prepare('SELECT * FROM transactions WHERE id = ? AND payer_id = ? AND status = ?');
+        $stmt->execute([$txId, $buyerId, 'pending_buyer']);
         $tx = $stmt->fetch();
         
-        if (!$tx) {
-            return ['success' => false, 'error' => 'Transaction not found or already confirmed'];
-        }
+        if (!$tx) return ['success' => false, 'error' => 'Transaktion nicht gefunden oder falscher Status'];
         
         $db->prepare('UPDATE transactions SET status = ?, settled_at = datetime(\'now\') WHERE id = ?')
-            ->execute(['confirmed_manual', $transactionId]);
+            ->execute(['pending_seller', $txId]);
         
-        // Update listing if applicable
-        if ($tx['listing_id']) {
-            $db->prepare('UPDATE listings SET is_sold = 1, buyer_id = ?, sold_at = datetime(\'now\') WHERE id = ?')
-                ->execute([$tx['payer_id'] ?? 0, $tx['listing_id']]);
+        if ($paymentProof) {
+            $db->prepare('UPDATE transactions SET payment_request = ? WHERE id = ?')
+                ->execute([$paymentProof, $txId]);
         }
         
-        return ['success' => true, 'transaction_id' => $transactionId];
+        return ['success' => true, 'message' => 'Zahlung bestätigt! Warte auf Bestätigung des Verkäufers.'];
+    }
+    
+    /**
+     * Seller confirms they received payment
+     */
+    public function sellerConfirms(string $txId, int $sellerId): array {
+        $db = getDB();
+        
+        $stmt = $db->prepare('SELECT * FROM transactions WHERE id = ? AND payee_id = ? AND status = ?');
+        $stmt->execute([$txId, $sellerId, 'pending_seller']);
+        $tx = $stmt->fetch();
+        
+        if (!$tx) return ['success' => false, 'error' => 'Transaktion nicht gefunden oder falscher Status'];
+        
+        // Mark transaction complete
+        $db->prepare('UPDATE transactions SET status = ?, settled_at = datetime(\'now\') WHERE id = ?')
+            ->execute(['confirmed_manual', $txId]);
+        
+        // Mark listing as sold
+        if ($tx['listing_id']) {
+            $db->prepare('UPDATE listings SET is_sold = 1, buyer_id = ?, sold_at = datetime(\'now\') WHERE id = ?')
+                ->execute([$tx['payer_id'], $tx['listing_id']]);
+            
+            // Increment seller's total_sales
+            $db->prepare('UPDATE users SET total_sales = total_sales + 1 WHERE id = ?')
+                ->execute([$sellerId]);
+        }
+        
+        return ['success' => true, 'message' => 'Zahlung bestätigt! Angebot als verkauft markiert.'];
+    }
+    
+    /**
+     * Seller rejects payment (didn't receive it)
+     */
+    public function sellerRejects(string $txId, int $sellerId): array {
+        $db = getDB();
+        
+        $stmt = $db->prepare('SELECT * FROM transactions WHERE id = ? AND payee_id = ? AND status = ?');
+        $stmt->execute([$txId, $sellerId, 'pending_seller']);
+        $tx = $stmt->fetch();
+        
+        if (!$tx) return ['success' => false, 'error' => 'Transaktion nicht gefunden'];
+        
+        $db->prepare('UPDATE transactions SET status = \'rejected\' WHERE id = ?')
+            ->execute([$txId]);
+        
+        return ['success' => true, 'message' => 'Zahlung abgelehnt. Transaktion storniert.'];
+    }
+    
+    /**
+     * Cancel transaction (buyer cancels before paying)
+     */
+    public function cancelTransaction(string $txId, int $userId): array {
+        $db = getDB();
+        
+        $stmt = $db->prepare('SELECT * FROM transactions WHERE id = ? AND (payer_id = ? OR payee_id = ?) AND status IN (?, ?)');
+        $stmt->execute([$txId, $userId, $userId, 'pending_buyer', 'pending_seller']);
+        $tx = $stmt->fetch();
+        
+        if (!$tx) return ['success' => false, 'error' => 'Kann nicht storniert werden'];
+        
+        $db->prepare('UPDATE transactions SET status = \'cancelled\' WHERE id = ?')
+            ->execute([$txId]);
+        
+        return ['success' => true, 'message' => 'Transaktion storniert.'];
     }
 }
 

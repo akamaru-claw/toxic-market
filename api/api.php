@@ -644,136 +644,126 @@ try {
             $user = requireAuth();
             if ($method !== 'POST') throw new Exception('POST required', 405);
             $data = json_decode(file_get_contents('php://input'), true);
-            
             $listingId = $data['listing_id'] ?? '';
-            $paymentMethod = $data['payment_method'] ?? 'lightning'; // lightning, onchain, manual
             
-            // Get listing
-            $stmt = $db->prepare('SELECT l.*, ct.name as card_name, u.display_name as seller_name, u.id as seller_id
-                FROM listings l 
-                JOIN card_templates ct ON l.card_template_id = ct.id
-                JOIN users u ON l.seller_id = u.id
-                WHERE l.id = ? AND l.is_sold = 0');
-            $stmt->execute([$listingId]);
-            $listing = $stmt->fetch();
+            $p2p = new P2PPayments();
+            $result = $p2p->initiatePurchase($user['id'], $listingId);
             
-            if (!$listing) throw new Exception('Listing not found or already sold', 404);
-            if ($listing['seller_id'] == $user['id']) throw new Exception('Cannot buy your own listing', 400);
-            
-            $totalSats = $listing['price_sats'];
-            if ($data['include_shipping'] && $data['shipping_region'] === 'de') {
-                $totalSats += $listing['local_shipping_sats'];
-            } elseif ($data['include_shipping'] && $data['shipping_region'] === 'intl') {
-                $totalSats += $listing['intl_shipping_sats'];
-            }
-            
-            $description = "Toxic Market: {$listing['title']} - " . formatSats($totalSats);
-            
-            // Route by payment method
-            $paymentMethod = $data['payment_method'] ?? 'lightning';
-            $ln = new LightningPayments();
-            
-            switch ($paymentMethod) {
-                case 'lightning':
-                    $invoice = $ln->createInvoice($totalSats, $description, $listingId);
-                    break;
-                    
-                case 'onchain':
-                    $invoice = $ln->createOnchainInvoice($totalSats, $description, $listingId);
-                    break;
-                    
-                case 'manual':
-                    $invoice = $ln->createManualInvoice($totalSats, $description, $listingId);
-                    break;
-                    
-                default:
-                    throw new Exception('Unsupported payment method: ' . $paymentMethod, 400);
-            }
-            
-            // Create transaction record
-            $txId = bin2hex(random_bytes(16));
-            $stmt = $db->prepare('INSERT INTO transactions (id, type, listing_id, payer_id, payee_id, amount_sats, payment_hash, payment_request, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt->execute([
-                $txId,
-                'purchase',
-                $listingId,
-                $user['id'],
-                $listing['seller_id'],
-                $totalSats,
-                $invoice['payment_hash'] ?? $txId,
-                $invoice['payment_request'] ?? '',
-                'pending'
-            ]);
-            
-            echo json_encode([
-                'success' => true,
-                'transaction_id' => $txId,
-                'amount_sats' => $totalSats,
-                'amount_eur' => round(satsToEur($totalSats), 2),
-                'payment_method' => $invoice['source'],
-                'payment_hash' => $invoice['payment_hash'] ?? $txId,
-                'payment_request' => $invoice['payment_request'] ?? '',
-                'expires_at' => $invoice['expires_at'] ?? '',
-                'instructions' => $invoice['instructions'] ?? '',
-                'listing' => [
-                    'id' => $listing['id'],
-                    'title' => $listing['title'],
-                    'price_sats' => $listing['price_sats'],
-                    'seller_name' => $listing['seller_name'],
-                ],
-            ]);
-            break;
-
-        // === CHECK PAYMENT STATUS ===
-        case 'payment_status':
-            $txId = $_GET['id'] ?? '';
-            $stmt = $db->prepare('SELECT t.*, l.title as listing_title, u.display_name as payer_name FROM transactions t LEFT JOIN listings l ON t.listing_id = l.id LEFT JOIN users u ON t.payer_id = u.id WHERE t.id = ?');
-            $stmt->execute([$txId]);
-            $tx = $stmt->fetch();
-            if (!$tx) throw new Exception('Transaction not found', 404);
-            
-            $paid = false;
-            if ($tx['status'] === 'pending' && $tx['payment_hash']) {
-                $ln = new LightningPayments();
-                $check = $ln->checkPayment($tx['payment_hash']);
-                if ($check['paid']) {
-                    $db->prepare('UPDATE transactions SET status = ?, settled_at = datetime(\'now\') WHERE id = ?')
-                        ->execute(['paid', $txId]);
-                    $paid = true;
+            if ($result['success']) {
+                // Add EUR conversion
+                $result['amount_eur'] = round(satsToEur($result['amount_sats']), 2);
+                
+                // Get listing details for the response
+                $stmt = $db->prepare('SELECT l.*, u.display_name as seller_name FROM listings l JOIN users u ON l.seller_id = u.id WHERE l.id = ?');
+                $stmt->execute([$listingId]);
+                $listing = $stmt->fetch();
+                if ($listing) {
+                    $result['listing'] = [
+                        'id' => $listing['id'],
+                        'title' => $listing['title'],
+                        'price_sats' => $listing['price_sats'],
+                        'seller_name' => $listing['seller_name'],
+                    ];
                 }
-            } elseif (in_array($tx['status'], ['paid', 'confirmed_manual'])) {
-                $paid = true;
             }
             
-            echo json_encode([
-                'transaction_id' => $txId,
-                'status' => $paid ? 'paid' : $tx['status'],
-                'amount_sats' => $tx['amount_sats'],
-                'listing_title' => $tx['listing_title'] ?? '',
-                'payer_name' => $tx['payer_name'] ?? '',
-                'created_at' => $tx['created_at'],
-                'settled_at' => $tx['settled_at'] ?? null,
-            ]);
+            echo json_encode($result);
             break;
 
-        // === CONFIRM MANUAL PAYMENT (seller confirms) ===
-        case 'confirm_payment':
+        // === BUYER CONFIRMS PAYMENT SENT ===
+        case 'buyer_confirms':
             $user = requireAuth();
             if ($method !== 'POST') throw new Exception('POST required', 405);
             $data = json_decode(file_get_contents('php://input'), true);
             
             $txId = $data['transaction_id'] ?? '';
-            $stmt = $db->prepare('SELECT t.*, l.seller_id FROM transactions t LEFT JOIN listings l ON t.listing_id = l.id WHERE t.id = ?');
+            $proof = $data['payment_proof'] ?? null; // Optional: tx hash, screenshot link, etc.
+            
+            $p2p = new P2PPayments();
+            $result = $p2p->buyerConfirms($txId, $user['id'], $proof);
+            echo json_encode($result);
+            break;
+
+        // === SELLER CONFIRMS PAYMENT RECEIVED ===
+        case 'seller_confirms':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            
+            $txId = $data['transaction_id'] ?? '';
+            
+            $p2p = new P2PPayments();
+            $result = $p2p->sellerConfirms($txId, $user['id']);
+            echo json_encode($result);
+            break;
+
+        // === SELLER REJECTS PAYMENT ===
+        case 'seller_rejects':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            
+            $txId = $data['transaction_id'] ?? '';
+            
+            $p2p = new P2PPayments();
+            $result = $p2p->sellerRejects($txId, $user['id']);
+            echo json_encode($result);
+            break;
+
+        // === CANCEL TRANSACTION ===
+        case 'cancel_transaction':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            
+            $txId = $data['transaction_id'] ?? '';
+            
+            $p2p = new P2PPayments();
+            $result = $p2p->cancelTransaction($txId, $user['id']);
+            echo json_encode($result);
+            break;
+
+        // === CHECK PAYMENT/TRANSACTION STATUS ===
+        case 'payment_status':
+            $txId = $_GET['id'] ?? '';
+            $stmt = $db->prepare('SELECT t.*, l.title as listing_title, l.id as listing_id, 
+                u1.display_name as payer_name, u2.display_name as payee_name
+                FROM transactions t 
+                LEFT JOIN listings l ON t.listing_id = l.id
+                LEFT JOIN users u1 ON t.payer_id = u1.id
+                LEFT JOIN users u2 ON t.payee_id = u2.id
+                WHERE t.id = ?');
             $stmt->execute([$txId]);
             $tx = $stmt->fetch();
             if (!$tx) throw new Exception('Transaction not found', 404);
-            if ($tx['payee_id'] != $user['id'] && $tx['seller_id'] != $user['id']) {
-                throw new Exception('Only the seller can confirm payment', 403);
-            }
             
-            $ln = new LightningPayments();
-            $result = $ln->confirmManualPayment($txId, $user['id']);
-            echo json_encode($result);
+            echo json_encode([
+                'transaction_id' => $txId,
+                'status' => $tx['status'],
+                'amount_sats' => $tx['amount_sats'],
+                'listing_title' => $tx['listing_title'] ?? '',
+                'payer_name' => $tx['payer_name'] ?? '',
+                'payee_name' => $tx['payee_name'] ?? '',
+                'created_at' => $tx['created_at'],
+                'settled_at' => $tx['settled_at'] ?? null,
+            ]);
+            break;
+
+        // === MY TRANSACTIONS ===
+        case 'my_transactions':
+            $user = requireAuth();
+            $stmt = $db->prepare('SELECT t.*, l.title as listing_title, l.id as listing_id,
+                u1.display_name as payer_name, u2.display_name as payee_name
+                FROM transactions t
+                LEFT JOIN listings l ON t.listing_id = l.id
+                LEFT JOIN users u1 ON t.payer_id = u1.id
+                LEFT JOIN users u2 ON t.payee_id = u2.id
+                WHERE t.payer_id = ? OR t.payee_id = ?
+                ORDER BY t.created_at DESC LIMIT 50');
+            $stmt->execute([$user['id'], $user['id']]);
+            $txs = $stmt->fetchAll();
+            
+            echo json_encode(['data' => $txs]);
             break;
 
         // === REQUEST PASSWORD RESET ===

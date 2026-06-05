@@ -191,43 +191,57 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                     <div class="modal-backdrop" onclick="closePaymentModal()"></div>
                     <div class="modal-content" style="max-width:480px;">
                         <button class="modal-close" onclick="closePaymentModal()">✕</button>
-                        <h2 style="font-size:1.3rem;margin-bottom:16px;">⚡ Zahlung</h2>
+                        <h2 style="font-size:1.3rem;margin-bottom:16px;">⚡ P2P Kauf</h2>
                         <div id="payment-content">
-                            <div style="text-align:center;padding:20px;">
-                                <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px;">Gesamt</div>
+                            <!-- Disclaimer -->
+                            <div style="background:rgba(247,147,26,0.08);border:1px solid rgba(247,147,26,0.2);border-radius:12px;padding:14px;margin-bottom:20px;">
+                                <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">
+                                    ⚠️ <strong>Du handelst direkt mit dem Verkäufer.</strong> Toxic Market verwahrt kein Geld und übernimmt keine Haftung. Sende die Zahlung nur, wenn du dem Verkäufer vertraust.
+                                </p>
+                            </div>
+                            
+                            <div style="text-align:center;padding:16px 0;">
+                                <div style="font-size:14px;color:var(--text-muted);margin-bottom:4px;">Gesamt</div>
                                 <div style="font-size:2rem;font-weight:800;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;" id="pay-amount"></div>
                                 <div style="font-size:13px;color:var(--text-dim);margin-top:4px;" id="pay-amount-eur"></div>
                             </div>
-                            <div id="payment-methods" style="margin-top:20px;">
-                                <!-- Lightning (if invoice available) -->
-                                <div id="lightning-payment" style="display:none;">
-                                    <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;">
-                                        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">BOLT11 Invoice:</div>
-                                        <div style="word-break:break-all;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);background:var(--bg-elevated);padding:10px;border-radius:8px;cursor:pointer;margin-bottom:12px;" id="bolt11-invoice" onclick="copyInvoice()">Loading...</div>
-                                        <button class="btn btn-primary btn-full" onclick="copyInvoice()">📋 Invoice kopieren</button>
-                                        <p style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:8px;">Zahle die Invoice mit deinem Lightning-Wallet.</p>
-                                    </div>
+
+                            <div id="p2p-payment-steps" style="margin-top:16px;">
+                                <div style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);border-radius:12px;padding:16px;">
+                                    <h3 style="font-size:14px;color:var(--accent);margin-bottom:12px;">💳 So funktioniert's</h3>
+                                    <ol style="font-size:13px;color:var(--text-muted);padding-left:20px;line-height:2;">
+                                        <li>Kontaktiere <strong id="seller-name-display"><?= htmlspecialchars($listing['seller_name']) ?></strong></li>
+                                        <li>Sende <strong id="manual-amount"></strong> per Lightning direkt an den Verkäufer</li>
+                                        <li>Bestätige hier, dass du gezahlt hast</li>
+                                        <li>Der Verkäufer bestätigt den Zahlungseingang</li>
+                                        <li>Deal! 🤝</li>
+                                    </ol>
                                 </div>
-                                <!-- Manual Payment -->
-                                <div id="manual-payment" style="margin-top:16px;">
-                                    <div style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);border-radius:12px;padding:16px;">
-                                        <h3 style="font-size:14px;color:var(--accent);margin-bottom:12px;">💳 Direktzahlung an Verkäufer</h3>
-                                        <ol style="font-size:13px;color:var(--text-muted);padding-left:20px;line-height:1.8;">
-                                            <li>Kontaktiere den Verkäufer per Lightning</li>
-                                            <li>Sende <strong id="manual-amount"></strong> an den Verkäufer</li>
-                                            <li>Bestätige die Zahlung hier</li>
-                                            <li>Der Verkäufer bestätigt den Erhalt</li>
-                                        </ol>
-                                        <button class="btn btn-outline btn-full" style="margin-top:12px;" id="confirm-payment-btn" onclick="confirmPayment()">
-                                            ✅ Zahlung gesendet
-                                        </button>
-                                    </div>
+                                
+                                <!-- Step 1: Buyer pays -->
+                                <div id="step-buyer-pay" style="margin-top:16px;">
+                                    <button class="btn btn-bitcoin btn-full" style="padding:14px;font-size:15px;" onclick="buyerConfirmedPayment()">
+                                        ✅ Ich habe gezahlt
+                                    </button>
+                                    <button class="btn btn-outline btn-full" style="margin-top:8px;padding:10px;font-size:13px;" onclick="closePaymentModal()">
+                                        ❌ Abbrechen
+                                    </button>
                                 </div>
-                            </div>
-                            <div id="payment-status" class="hidden" style="text-align:center;margin-top:20px;">
-                                <div style="font-size:48px;margin-bottom:12px;" id="status-emoji">⏳</div>
-                                <div style="font-size:16px;font-weight:600;" id="status-text">Zahlung ausstehend</div>
-                                <div style="font-size:13px;color:var(--text-muted);margin-top:4px;" id="status-sub"></div>
+                                
+                                <!-- Step 2: Waiting for seller -->
+                                <div id="step-waiting-seller" class="hidden" style="margin-top:16px;text-align:center;">
+                                    <div style="font-size:48px;margin-bottom:8px;">⏳</div>
+                                    <div style="font-size:15px;font-weight:600;">Warte auf Verkäufer</div>
+                                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Der Verkäufer muss den Zahlungseingang bestätigen.</div>
+                                </div>
+                                
+                                <!-- Step 3: Complete -->
+                                <div id="step-complete" class="hidden" style="margin-top:16px;text-align:center;">
+                                    <div style="font-size:48px;margin-bottom:8px;">🤝</div>
+                                    <div style="font-size:15px;font-weight:600;color:var(--accent);">Deal abgeschlossen!</div>
+                                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Der Verkäufer hat die Zahlung bestätigt.</div>
+                                    <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="window.location.reload()">Seite aktualisieren</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -295,12 +309,11 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
 
     async function initiatePayment() {
         if (!LOGGED_IN) {
-            toast('Bitte melde dich an, um zu kaufen.', 'warning'); window.location.href='/toxic-market/';
+            toast('Bitte melde dich an, um zu kaufen.', 'warning');
             window.location.href = '/toxic-market/';
             return;
         }
         
-        const region = document.getElementById('shipping-region').value;
         const btn = document.getElementById('buy-btn');
         btn.disabled = true;
         btn.textContent = '⏳ Wird vorbereitet...';
@@ -310,103 +323,69 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({
-                    listing_id: LISTING_ID,
-                    payment_method: 'lightning',
-                    include_shipping: region !== 'none',
-                    shipping_region: region
-                })
+                body: JSON.stringify({ listing_id: LISTING_ID })
             });
             const data = await res.json();
             
             if (data.success) {
-                // Show payment modal
                 document.getElementById('payment-modal').classList.remove('hidden');
                 document.getElementById('pay-amount').textContent = data.amount_sats.toLocaleString() + ' sats';
+                document.getElementById('manual-amount').textContent = data.amount_sats.toLocaleString() + ' sats';
                 if (data.amount_eur) {
                     document.getElementById('pay-amount-eur').textContent = `≈ €${data.amount_eur}`;
                 }
-                
-                if (data.payment_request) {
-                    // Lightning invoice available
-                    document.getElementById('lightning-payment').style.display = 'block';
-                    document.getElementById('bolt11-invoice').textContent = data.payment_request;
-                } else {
-                    // Manual payment
-                    document.getElementById('manual-amount').textContent = data.amount_sats.toLocaleString() + ' sats';
-                }
-                
-                // Store transaction ID
                 window.currentTransactionId = data.transaction_id;
-                
             } else {
-                toast(data.error || 'Zahlung konnte nicht initiiert werden', 'error');
+                toast(data.error || 'Fehler beim Initiieren', 'error');
             }
         } catch (e) {
-            toast('Server-Fehler beim Initiieren der Zahlung', 'error');
+            toast('Server-Fehler', 'error');
         }
         
         btn.disabled = false;
-        btn.textContent = '⚡ Kaufen für ' + PRICE_SATS.toLocaleString() + ' Sats';
-    }
-
-    function copyInvoice() {
-        const invoice = document.getElementById('bolt11-invoice').textContent;
-        navigator.clipboard.writeText(invoice).then(() => {
-            toast('Invoice kopiert! Zahle mit deiner Lightning-Wallet.', 'success');
-        });
+        btn.innerHTML = '⚡ Kaufen für ' + PRICE_SATS.toLocaleString() + ' Sats';
     }
 
     function closePaymentModal() {
         document.getElementById('payment-modal').classList.add('hidden');
     }
 
-    async function confirmPayment() {
+    async function buyerConfirmedPayment() {
         if (!window.currentTransactionId) return;
-        const btn = document.getElementById('confirm-payment-btn');
-        btn.disabled = true;
-        btn.textContent = '⏳ Wird geprüft...';
-        
-        // Poll payment status
-        const checkStatus = async () => {
-            try {
-                const res = await fetch(`/toxic-market/api/api.php?action=payment_status&id=${window.currentTransactionId}`);
-                const data = await res.json();
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=buyer_confirms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ transaction_id: window.currentTransactionId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('step-buyer-pay').classList.add('hidden');
+                document.getElementById('step-waiting-seller').classList.remove('hidden');
+                toast('Zahlung gemeldet! Warte auf Verkäufer-Bestätigung.', 'success');
                 
-                const statusEl = document.getElementById('payment-status');
-                const emojiEl = document.getElementById('status-emoji');
-                const textEl = document.getElementById('status-text');
-                const subEl = document.getElementById('status-sub');
-                
-                statusEl.classList.remove('hidden');
-                
-                if (data.status === 'paid' || data.status === 'confirmed_manual') {
-                    emojiEl.textContent = '✅';
-                    textEl.textContent = 'Zahlung bestätigt!';
-                    subEl.textContent = 'Der Verkäufer wird kontaktiert.';
-                    return true;
-                } else if (data.status === 'pending_manual' || data.status === 'pending') {
-                    emojiEl.textContent = '⏳';
-                    textEl.textContent = 'Zahlung ausstehend';
-                    subEl.textContent = 'Warte auf Bestätigung durch den Verkäufer...';
-                    return false;
-                }
-            } catch(e) {}
-            return false;
-        };
-        
-        // Check immediately, then every 10 seconds
-        const paid = await checkStatus();
-        if (!paid) {
-            const interval = setInterval(async () => {
-                const done = await checkStatus();
-                if (done) {
-                    clearInterval(interval);
-                    setTimeout(() => { window.location.reload(); }, 3000);
-                }
-            }, 10000);
-        } else {
-            setTimeout(() => { window.location.reload(); }, 3000);
+                // Poll for seller confirmation
+                const poll = setInterval(async () => {
+                    try {
+                        const checkRes = await fetch(`/toxic-market/api/api.php?action=payment_status&id=${window.currentTransactionId}`);
+                        const checkData = await checkRes.json();
+                        if (checkData.status === 'confirmed_manual') {
+                            clearInterval(poll);
+                            document.getElementById('step-waiting-seller').classList.add('hidden');
+                            document.getElementById('step-complete').classList.remove('hidden');
+                        } else if (checkData.status === 'rejected' || checkData.status === 'cancelled') {
+                            clearInterval(poll);
+                            toast('Verkäufer hat die Zahlung abgelehnt.', 'error');
+                            closePaymentModal();
+                        }
+                    } catch(e) {}
+                }, 10000);
+            } else {
+                toast(data.error || 'Fehler', 'error');
+            }
+        } catch (e) {
+            toast('Server-Fehler', 'error');
         }
     }
     </script>
