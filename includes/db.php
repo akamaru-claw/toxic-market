@@ -170,7 +170,7 @@ function initDB(): void {
 }
 
 function seedCards(PDO $db): void {
-    // Generation 1 — Zitadelle 2025
+    // Generation 1 — Toxic Booster - Genesis Edition (DE)
     $gen1_names = [
         'The Beginning', 'The Awakening', 'The Storm', 'The Mirror',
         'The Flame', 'The Void', 'The Echo', 'The Path',
@@ -183,36 +183,36 @@ function seedCards(PDO $db): void {
     $stmt = $db->prepare('INSERT INTO card_templates (name, generation, description, holo_positions) VALUES (?, 1, ?, ?)');
     foreach ($gen1_names as $i => $name) {
         $num = $i + 1;
-        $desc = "Toxic Booster Genesis Edition 2025 — Card #{$num}: {$name}. Part of the original 21-card set from the Bitcoin Zitadelle.";
+        $desc = "Toxic Booster - Genesis Edition (DE) — Card #{$num}/21";
         $holo = json_encode([21]); // Only #21/210 is holo in Gen 1
-        $stmt->execute(["Gen1 #{$num}: {$name}", $desc, $holo]);
+        $stmt->execute([$name, $desc, $holo]);
     }
 
-    // Generation 2 — Zitadelle 2026
+    // Generation 2 — Toxic Booster - Second Edition (DE)
     $gen2_names = [
-        'The Return', 'The Signal', 'The Rift', 'The Beacon',
-        'The Cascade', 'The Fortress', 'The Whisper', 'The Thunder',
-        'The Compass', 'The Ember', 'The Tide', 'The Summit',
-        'The Labyrinth', 'The Phoenix', 'The Anchor', 'The Prism',
-        'The Chronicle', 'The Bastion', 'The Reverie', 'The Apex',
-        'The Legacy'
+        'Jack Dorsey', 'Marc Friedrich', 'Hairtoshi', 'Antonopoulos',
+        'Adam Back', 'Nick Szabo', 'Sunny Decree', 'Kanuto',
+        'Sirius', 'Hal Finney', 'Alex Von Frankenberg', 'Pieter Wuille',
+        'Loddi', 'Matt Corallo', 'Jack Mallers', 'Peter Todd',
+        'Jameson Lopp', 'Rahim Taghizadegan', 'Nicolas Dorier',
+        'Beer of Satoshi', 'Fab or Chris'
     ];
 
     $stmt2 = $db->prepare('INSERT INTO card_templates (name, generation, description, holo_positions) VALUES (?, 2, ?, ?)');
     foreach ($gen2_names as $i => $name) {
         $num = $i + 1;
-        $desc = "Toxic Booster Zitadelle Edition 2026 — Card #{$num}: {$name}. 21 new designs for the second chapter.";
+        $desc = "Toxic Booster - Second Edition (DE) — Card #{$num}/21";
         $holo = json_encode([1, 21, 210]); // #1, #21, #210 are holo in Gen 2
-        $stmt2->execute(["Gen2 #{$num}: {$name}", $desc, $holo]);
+        $stmt2->execute([$name, $desc, $holo]);
     }
 
     // Gen 1 Remakes (English versions)
     $stmt3 = $db->prepare('INSERT INTO card_templates (name, generation, description, holo_positions) VALUES (?, 3, ?, ?)');
     foreach ($gen1_names as $i => $name) {
         $num = $i + 1;
-        $desc = "Toxic Booster Genesis Remake 2026 — Card #{$num}: {$name} (English Edition). Same design, English text. 35 copies per design.";
+        $desc = "Toxic Booster - Genesis Edition (EN Remake) — Card #{$num}/21";
         $holo = json_encode([21]); // Only #21 is holo
-        $stmt3->execute(["Gen1 Remake #{$num}: {$name} (EN)", $desc, $holo]);
+        $stmt3->execute(["{$name} (EN)", $desc, $holo]);
     }
 }
 
