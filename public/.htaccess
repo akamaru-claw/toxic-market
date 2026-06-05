@@ -1,5 +1,23 @@
 <IfModule mod_rewrite.c>
-    RewriteEngine On
+    # Cache control — force reload for CSS/JS (versioned), cache images
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 day"
+    ExpiresByType application/javascript "access plus 1 day"
+    ExpiresByType image/svg+xml "access plus 7 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+</IfModule>
+
+# Force no-cache for HTML so updates are always visible
+<FilesMatch "\.(html|php)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+
+RewriteEngine On
     
     # Block access to sensitive files
     RewriteRule ^data/ - [F,L]
