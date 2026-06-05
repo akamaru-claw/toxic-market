@@ -134,7 +134,7 @@ curl_close($ch);
                         <?php if ($l['proof_block_height']): ?>
                         <div class="proof-info">🔍 Besitznachweis: Block #<?= $l['proof_block_height'] ?></div>
                         <?php endif; ?>
-                        <button class="btn btn-primary btn-sm" onclick="alert('Kauf kommer bald!')">Kaufen</button>
+                        <button class="btn btn-primary btn-sm" onclick="toast('Kauf-Funktion kommt bald!', 'info')">Kaufen</button>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -149,7 +149,7 @@ curl_close($ch);
                         <div class="listing-price"><?= number_format($a['current_price_sats'] ?: $a['starting_price_sats']) ?> sats</div>
                         <div class="auction-timer">⏱ Endet: <?= date('d.m.Y H:i', strtotime($a['ends_at'])) ?></div>
                         <div class="listing-meta"><?= $a['bid_count'] ?> Gebote · von <strong><?= htmlspecialchars($a['seller_name']) ?></strong></div>
-                        <button class="btn btn-primary btn-sm" onclick="alert('Bieten kommer bald!')">Bieten</button>
+                        <button class="btn btn-primary btn-sm" onclick="toast('Biet-Funktion kommt bald!', 'info')">Bieten</button>
                     </div>
                     <?php endforeach; ?>
                 </div>

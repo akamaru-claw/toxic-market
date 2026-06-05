@@ -6,6 +6,38 @@ let cards = [];
 let currentFilter = 'all';
 let currentUser = null;
 
+// ─── Toast System ───
+function toast(msg, type = 'info', duration = 3500) {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;max-width:360px;';
+        document.body.appendChild(container);
+    }
+    const colors = {
+        success: 'rgba(0,255,136,0.95)',
+        error: 'rgba(255,68,85,0.95)',
+        info: 'rgba(59,130,246,0.95)',
+        warning: 'rgba(247,147,26,0.95)',
+    };
+    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+    const t = document.createElement('div');
+    t.style.cssText = `background:${colors[type] || colors.info};color:#fff;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,0.3);display:flex;gap:8px;align-items:center;animation:toast-in 0.3s ease;cursor:pointer;font-family:inherit;`;
+    t.innerHTML = `<span>${icons[type] || ''}</span><span>${msg}</span>`;
+    t.onclick = () => t.remove();
+    container.appendChild(t);
+    setTimeout(() => { if (t.parentNode) t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, duration);
+}
+
+// Add toast animation
+if (!document.getElementById('toast-styles')) {
+    const s = document.createElement('style');
+    s.id = 'toast-styles';
+    s.textContent = '@keyframes toast-in{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}';
+    document.head.appendChild(s);
+}
+
 // Init
 document.addEventListener('DOMContentLoaded', () => {
     loadCards();
@@ -163,7 +195,7 @@ function loginNostr() {
             });
         });
     } else {
-        alert('Kein Nostr-Extension gefunden. Installiere nos2x oder Alby.');
+        toast('Kein Nostr-Extension gefunden. Installiere nos2x oder Alby.', 'warning');
     }
 }
 

@@ -175,7 +175,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
 
     function handleFiles(files) {
         const remaining = 5 - uploadedImages.length;
-        if (remaining <= 0) { alert('Maximal 5 Bilder erlaubt.'); return; }
+        if (remaining <= 0) { toast('Maximal 5 Bilder erlaubt.', 'warning'); return; }
         const toUpload = Array.from(files).slice(0, remaining);
         toUpload.forEach(file => uploadImage(file));
     }
@@ -194,10 +194,10 @@ $preselectedCard = intval($_GET['card'] ?? 0);
                 uploadedImages.push(data.url);
                 renderPreviews();
             } else {
-                alert('Upload-Fehler: ' + (data.error || 'Unbekannter Fehler'));
+                toast('Upload-Fehler: ' + (data.error || 'Unbekannt'), 'error');
             }
         } catch (e) {
-            alert('Upload-Fehler: Server nicht erreichbar');
+            toast('Upload-Fehler: Server nicht erreichbar', 'error');
         }
     }
 

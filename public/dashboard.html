@@ -131,6 +131,7 @@ $mySales = $stmt4->fetchAll();
                     <div style="display:flex;gap:8px;">
                         <?php if (!$l['is_sold']): ?>
                         <a href="/toxic-market/listing/<?= $l['id'] ?>" class="btn btn-sm btn-outline">Ansehen</a>
+                        <button class="btn btn-sm" style="background:rgba(255,68,85,0.15);color:var(--danger);border:1px solid rgba(255,68,85,0.3);" onclick="deleteListing('<?= $l['id'] ?>', this)">🗑️</button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -209,12 +210,36 @@ $mySales = $stmt4->fetchAll();
             });
             const data = await res.json();
             if (data.success) {
-                alert('Bio gespeichert!');
+                toast('Bio gespeichert!', 'success');
             } else {
-                alert('Fehler: ' + (data.error || 'Unbekannt'));
+                toast('Fehler: ' + (data.error || 'Unbekannt'), 'error');
             }
         } catch(e) {
-            alert('Server-Fehler');
+            toast('Server-Fehler', 'error');
+        }
+    }
+
+    async function deleteListing(id, btn) {
+        if (!confirm('Angebot wirklich löschen?')) return;
+        btn.disabled = true;
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=delete_listing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ id: id })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast('Angebot gelöscht', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                toast('Fehler: ' + (data.error || 'Unbekannt'), 'error');
+                btn.disabled = false;
+            }
+        } catch(e) {
+            toast('Server-Fehler', 'error');
+            btn.disabled = false;
         }
     }
     </script>

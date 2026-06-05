@@ -294,7 +294,7 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
 
     async function initiatePayment() {
         if (!LOGGED_IN) {
-            alert('Bitte melde dich an, um zu kaufen.');
+            toast('Bitte melde dich an, um zu kaufen.', 'warning'); window.location.href='/toxic-market/';
             window.location.href = '/toxic-market/';
             return;
         }
@@ -339,10 +339,10 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                 window.currentTransactionId = data.transaction_id;
                 
             } else {
-                alert('Fehler: ' + (data.error || 'Zahlung konnte nicht initiiert werden'));
+                toast(data.error || 'Zahlung konnte nicht initiiert werden', 'error');
             }
         } catch (e) {
-            alert('Server-Fehler beim Initiieren der Zahlung');
+            toast('Server-Fehler beim Initiieren der Zahlung', 'error');
         }
         
         btn.disabled = false;
@@ -352,7 +352,7 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
     function copyInvoice() {
         const invoice = document.getElementById('bolt11-invoice').textContent;
         navigator.clipboard.writeText(invoice).then(() => {
-            alert('Invoice kopiert! Zahle mit deiner Lightning-Wallet.');
+            toast('Invoice kopiert! Zahle mit deiner Lightning-Wallet.', 'success');
         });
     }
 

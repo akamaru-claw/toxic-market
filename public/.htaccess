@@ -48,6 +48,8 @@ RewriteEngine On
     RewriteRule ^dashboard$ /toxic-market/dashboard.html [QSA,L]
     # Set Builder
     RewriteRule ^set-builder$ /toxic-market/set-builder.html [QSA,L]
+    # Sitemap
+    RewriteRule ^sitemap\.xml$ /toxic-market/sitemap.php [QSA,L]
     # Image uploads - serve via PHP only (no direct access)
     RewriteRule ^uploads/ - [F,L]
     

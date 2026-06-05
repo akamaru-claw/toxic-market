@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /toxic-market/
+Allow: /toxic-market/api/api.php?action=cards
+Allow: /toxic-market/api/api.php?action=listings
+Allow: /toxic-market/api/api.php?action=auctions
+Allow: /toxic-market/api/api.php?action=btc_price
+Disallow: /toxic-market/api/api.php?action=upload_image
+Disallow: /toxic-market/api/api.php?action=create_listing
+Disallow: /toxic-market/api/api.php?action=place_bid
+Disallow: /toxic-market/api/api.php?action=initiate_payment
+Disallow: /toxic-market/api/api.php?action=delete_listing
+Disallow: /toxic-market/api/api.php?action=update_listing
+Disallow: /toxic-market/api/api.php?action=update_profile
+Disallow: /toxic-market/data/
+Disallow: /toxic-market/includes/
+Disallow: /toxic-market/uploads/
+
+Sitemap: https://ml-bets.com/toxic-market/sitemap.xml
