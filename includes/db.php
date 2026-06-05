@@ -172,12 +172,12 @@ function initDB(): void {
 function seedCards(PDO $db): void {
     // Generation 1 — Toxic Booster - Genesis Edition (DE)
     $gen1_names = [
-        'The Beginning', 'The Awakening', 'The Storm', 'The Mirror',
-        'The Flame', 'The Void', 'The Echo', 'The Path',
-        'The Shadow', 'The Light', 'The Crown', 'The Fall',
-        'The Rise', 'The Bridge', 'The Horizon', 'The Depth',
-        'The Spark', 'The Silence', 'The Edge', 'The Core',
-        'The Genesis'
+        'Satoshi', 'Niko Jilch', 'Der Pleb', 'Einundzwanzig Stammtisch',
+        'Nodesignal', 'Fab', 'Blocktrainer', 'Seed or Chris',
+        'Plebrap', 'Bitcoin Hotel', 'Pioniere Münzweg', 'Christian Decker',
+        'Markus Turm', 'Jonas Nick', 'Netdiver', 'Dennis',
+        'Paddepadde', 'Maurice-Effekt', 'Zitadelle', 'Der Gigi',
+        'Einundzwanzig Magazin'
     ];
     
     $stmt = $db->prepare('INSERT INTO card_templates (name, generation, description, holo_positions) VALUES (?, 1, ?, ?)');
