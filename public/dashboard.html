@@ -97,6 +97,50 @@ $mySales = $stmt4->fetchAll();
                     style="width:100%;padding:10px 14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
                 <button class="btn btn-sm" style="margin-top:8px;" onclick="saveBio()">Speichern</button>
             </div>
+            
+            <!-- Nostr Keys -->
+            <?php if ($user['nostr_pubkey']): ?>
+            <div style="margin-top:16px;background:var(--bg);border:1px solid rgba(196,77,255,0.2);border-radius:10px;padding:14px;">
+                <div style="font-size:13px;color:var(--purple);font-weight:600;margin-bottom:8px;">🔑 Nostr-Identität</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);word-break:break-all;margin-bottom:8px;" id="npub-display">
+                    Lädt...
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="copyNpub()">📋 npub kopieren</button>
+                <div id="nsec-backup" style="margin-top:12px;display:none;">
+                    <div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:6px;">⚠️ Geheimer Schlüssel (nur einmal zeigen!)</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);word-break:break-all;background:var(--bg-elevated);padding:10px;border-radius:8px;border:1px solid rgba(255,68,85,0.3);" id="nsec-display"></div>
+                    <p style="font-size:11px;color:var(--text-dim);margin-top:6px;">Sichere diesen Schlüssel offline! Wer ihn hat, kann in deinem Namen posten.</p>
+                </div>
+                <button class="btn btn-sm" style="margin-top:8px;background:rgba(255,68,85,0.1);color:var(--danger);border:1px solid rgba(255,68,85,0.2);" onclick="showNsec()">👁️ nsec anzeigen</button>
+            </div>
+            <script>
+            // Display npub from stored pubkey
+            document.addEventListener('DOMContentLoaded', () => {
+                <?php if (!empty($user['nostr_pubkey'])): ?>
+                const pubkeyHex = '<?= htmlspecialchars($user['nostr_pubkey']) ?>';
+                const npubEl = document.getElementById('npub-display');
+                if (window.NostrTM && NostrTM.encodeNpub) {
+                    npubEl.textContent = NostrTM.encodeNpub(pubkeyHex);
+                } else {
+                    npubEl.textContent = pubkeyHex.substring(0, 16) + '...';
+                }
+                <?php endif; ?>
+            });
+            function copyNpub() {
+                const npubEl = document.getElementById('npub-display');
+                navigator.clipboard.writeText(npubEl.textContent).then(() => toast('npub kopiert!', 'success'));
+            }
+            function showNsec() {
+                if (window.NostrTM && NostrTM.hasNsec()) {
+                    const nsec = NostrTM.loadNsec();
+                    document.getElementById('nsec-display').textContent = nsec;
+                    document.getElementById('nsec-backup').style.display = 'block';
+                } else {
+                    toast('Kein nsec im Browser gespeichert. Hast du eine Nostr-Extension?', 'warning');
+                }
+            }
+            </script>
+            <?php endif; ?>
         </div>
 
         <!-- Quick Actions -->
@@ -198,6 +242,7 @@ $mySales = $stmt4->fetchAll();
         </div>
     </footer>
 
+    <script src="/toxic-market/js/nostr.js"></script>
     <script src="/toxic-market/js/toxic.js"></script>
     <script>
     async function saveBio() {

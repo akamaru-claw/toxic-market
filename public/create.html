@@ -156,6 +156,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
         </div>
     </footer>
 
+    <script src="/toxic-market/js/nostr.js"></script>
     <script src="/toxic-market/js/toxic.js"></script>
     <script>
     let uploadedImages = [];
@@ -275,6 +276,23 @@ $preselectedCard = intval($_GET['card'] ?? 0);
             if (result.success) {
                 document.getElementById('submit-success').textContent = '✅ Angebot erstellt! Weiterleitung...';
                 document.getElementById('submit-success').classList.remove('hidden');
+                
+                // Publish to Nostr
+                if (window.NostrTM && NostrTM.hasNsec()) {
+                    const nsec = NostrTM.loadNsec();
+                    NostrTM.publishListing(
+                        nsec,
+                        String(result.listing_id || data.card_template_id),
+                        data.title,
+                        data.price_sats,
+                        data.description,
+                        data.card_name || '',
+                        data.generation || 1
+                    ).then(evt => {
+                        if (evt) toast('🌐 Auf Nostr veröffentlicht!', 'success');
+                    }).catch(e => console.warn('Nostr publish failed:', e));
+                }
+                
                 setTimeout(() => { window.location.href = '/toxic-market/'; }, 2000);
             } else {
                 document.getElementById('submit-error').textContent = result.error || 'Fehler beim Erstellen';

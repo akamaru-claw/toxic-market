@@ -173,11 +173,49 @@ async function handleRegister(e) {
         return;
     }
     
+    // Generate Nostr keypair
+    let nostrPubkey = null;
+    const btn = e.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = '🔑 Generiere Nostr-Schlüssel...'; }
+    
     try {
-        const res = await api('register', { display_name: name, email, password, accept_disclaimer: true }, 'POST');
-        if (res.success) { hideAuth(); checkAuth(); location.reload(); }
+        if (window.NostrTM) {
+            const keypair = await NostrTM.generateKeypair();
+            if (keypair) {
+                nostrPubkey = keypair.pubKey;
+                // Save nsec to localStorage (user's responsibility)
+                NostrTM.saveNsec(keypair.nsec);
+                
+                // Show the user their keys
+                toast('🔑 Nostr-Schlüssel generiert!', 'success');
+                console.log('Your npub:', keypair.npub);
+                console.log('nsec saved to localStorage. Back it up!');
+            }
+        }
+    } catch(e) {
+        console.warn('Nostr key generation failed:', e);
+    }
+    
+    try {
+        const res = await api('register', { 
+            display_name: name, email, password, 
+            accept_disclaimer: true,
+            nostr_pubkey: nostrPubkey 
+        }, 'POST');
+        if (res.success) { 
+            hideAuth(); 
+            checkAuth(); 
+            // Publish Nostr profile metadata
+            if (window.NostrTM && NostrTM.hasNsec()) {
+                const nsec = NostrTM.loadNsec();
+                NostrTM.publishProfile(nsec, name, '', '').catch(e => console.warn('Profile publish failed:', e));
+            }
+            location.reload(); 
+        }
         else { showError('reg-error', res.error || 'Registrierung fehlgeschlagen'); }
     } catch (e) { showError('reg-error', 'Server-Fehler'); }
+    
+    if (btn) { btn.disabled = false; btn.textContent = 'Account erstellen'; }
 }
 
 async function logout() {
@@ -187,16 +225,22 @@ async function logout() {
     location.reload();
 }
 
-function loginNostr() {
-    if (window.nostr) {
-        window.nostr.getPublicKey().then(pubkey => {
-            api('login', { nostr_pubkey: pubkey }, 'POST').then(res => {
-                if (res.success) { hideAuth(); checkAuth(); location.reload(); }
-            });
-        });
-    } else {
-        toast('Kein Nostr-Extension gefunden. Installiere nos2x oder Alby.', 'warning');
-    }
+async function loginNostr() {
+    if (!window.NostrTM) { toast('Nostr nicht verfügbar', 'warning'); return; }
+    
+    const result = await NostrTM.loginWithNip07();
+    if (!result) return;
+    
+    try {
+        const res = await api('login', { nostr_pubkey: result.pubKey }, 'POST');
+        if (res.success) {
+            hideAuth();
+            checkAuth();
+            location.reload();
+        } else {
+            toast(res.error || 'Nostr-Login fehlgeschlagen', 'error');
+        }
+    } catch(e) { toast('Server-Fehler', 'error'); }
 }
 
 function showError(id, msg) {

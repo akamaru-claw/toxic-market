@@ -66,6 +66,7 @@ try {
             $password = $data['password'] ?? '';
             $display_name = $data['display_name'] ?? '';
             $accept_disclaimer = $data['accept_disclaimer'] ?? false;
+            $nostr_pubkey = $data['nostr_pubkey'] ?? null;
             $csrf = $data['csrf_token'] ?? '';
             
             if (!$email || !$password || !$display_name) {
@@ -75,8 +76,20 @@ try {
             if (!$accept_disclaimer) throw new Exception('You must accept the disclaimer', 400);
             if (!verifyCSRF($csrf)) throw new Exception('Invalid CSRF token', 403);
             
+            // Validate nostr pubkey if provided (64 hex chars)
+            if ($nostr_pubkey && !preg_match('/^[0-9a-f]{64}$/i', $nostr_pubkey)) {
+                throw new Exception('Invalid nostr pubkey format', 400);
+            }
+            
             try {
                 $user = registerWithEmail($email, $password, $display_name);
+                
+                // Save nostr pubkey if provided
+                if ($user && $nostr_pubkey) {
+                    $db->prepare('UPDATE users SET nostr_pubkey = ? WHERE id = ?')
+                        ->execute([$nostr_pubkey, $user['id']]);
+                    $user['nostr_pubkey'] = $nostr_pubkey;
+                }
             } catch (Exception $e) {
                 throw new Exception('Registration failed: ' . $e->getMessage(), 500);
             }
