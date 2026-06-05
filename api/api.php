@@ -122,7 +122,7 @@ try {
             foreach ($cards as &$card) {
                 $card['card_number'] = (($card['id'] - 1) % 21) + 1;
                 if (empty($card['image_url'])) {
-                    $holo = in_array($card['id'], $card['holo_positions'] ?? []) ? '1' : '0';
+                    $holo = in_array($card['card_number'], $card['holo_positions'] ?? []) ? '1' : '0';
                     $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . $holo;
                 }
             }
@@ -142,7 +142,7 @@ try {
             
             // Add dynamic image URL
             if (empty($card['image_url'])) {
-                $holo = in_array($card['id'], $card['holo_positions'] ?? []) ? '1' : '0';
+                $holo = in_array($card['card_number'], $card['holo_positions'] ?? []) ? '1' : '0';
                 $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . $holo;
             }
             }
