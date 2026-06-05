@@ -1,6 +1,7 @@
 <?php
 /**
  * Toxic Market — Set Builder (Welche Karten fehlen dir?)
+ * Sammel-Fortschritt, Checklist, Statistiken — für Sammler & Händler
  */
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
@@ -13,7 +14,7 @@ $generation = intval($_GET['gen'] ?? 0);
 $filter = $generation > 0 ? "WHERE ct.generation = $generation" : '';
 $cards = $db->query("SELECT * FROM card_templates $filter ORDER BY generation, id")->fetchAll();
 
-// Count totals
+// Count totals per generation
 $genCounts = [];
 foreach ($db->query("SELECT generation, COUNT(*) as cnt FROM card_templates GROUP BY generation")->fetchAll() as $row) {
     $genCounts[$row['generation']] = $row['cnt'];
@@ -22,59 +23,163 @@ $totalCards = array_sum($genCounts);
 
 // Get user's owned card IDs if logged in
 $ownedIds = [];
+$ownedPerGen = [1 => 0, 2 => 0, 3 => 0];
 if ($user) {
-    $stmt = $db->prepare('SELECT card_template_id FROM user_collection WHERE user_id = ?');
+    $stmt = $db->prepare('SELECT uc.card_template_id, ct.generation FROM user_collection uc JOIN card_templates ct ON uc.card_template_id = ct.id WHERE uc.user_id = ?');
     $stmt->execute([$user['id']]);
-    $ownedIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($stmt->fetchAll() as $row) {
+        $ownedIds[] = $row['card_template_id'];
+        $ownedPerGen[$row['generation']] = ($ownedPerGen[$row['generation']] ?? 0) + 1;
+    }
 }
 $ownedCount = count($ownedIds);
 $completionPct = $totalCards > 0 ? round(($ownedCount / $totalCards) * 100) : 0;
+
+// Rarity definitions
+$rarityColors = [
+    'common' => '#8892b0',
+    'uncommon' => '#6bcfff',
+    'rare' => '#c44dff',
+    'ultra_rare' => '#ff6b9d',
+    'holo' => 'linear-gradient(135deg, #ff6b9d, #c44dff, #6bcfff)',
+];
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Set Builder — Toxic Market</title>
-    <meta name="description" content="Welche Toxic Booster Karten fehlen dir? Sammel-Fortschritt und Checklist.">
+    <meta name="description" content="Welche Toxic Booster Karten fehlen dir? Sammel-Fortschritt, Checklist und Statistiken.">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
     <link href="/toxic-market/css/toxic.css" rel="stylesheet">
     <style>
-        .set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+        @media (max-width: 480px) { .set-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
+
         .set-card {
             background: var(--card-glass); backdrop-filter: blur(8px);
             border: 2px solid var(--border); border-radius: var(--radius-md);
-            padding: 12px; text-align: center; cursor: pointer;
-            transition: var(--transition); position: relative;
+            padding: 10px 8px; text-align: center; cursor: pointer;
+            transition: all 0.25s ease; position: relative; overflow: hidden;
+            user-select: none; -webkit-tap-highlight-color: transparent;
         }
-        .set-card:hover { background: var(--card-hover); border-color: var(--border-glow); }
-        .set-card.owned { border-color: var(--accent); background: rgba(0,255,136,0.06); }
+        .set-card:hover { background: var(--card-hover); border-color: var(--border-glow); transform: translateY(-2px); }
+        .set-card:active { transform: scale(0.96); }
+        .set-card.owned {
+            border-color: var(--accent); background: rgba(0,255,136,0.06);
+        }
         .set-card.owned::after {
-            content: '✓'; position: absolute; top: 8px; right: 8px;
-            background: var(--accent); color: #000; font-size: 12px; font-weight: 700;
-            width: 22px; height: 22px; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center;
+            content: '✓'; position: absolute; top: 6px; right: 6px;
+            background: var(--accent); color: #000; font-size: 11px; font-weight: 700;
+            width: 20px; height: 20px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; z-index: 2;
         }
-        .set-card img { width: 70px; height: 95px; object-fit: contain; margin: 0 auto 8px; display: block; }
-        .set-card .card-num { font-size: 11px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
-        .set-card .card-set-name { font-size: 12px; font-weight: 600; margin-top: 2px; line-height: 1.3; }
-        .set-card.holo .card-set-name { background: linear-gradient(135deg, #ff6b9d, #c44dff, #6bcfff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .progress-bar { background: var(--bg); border-radius: 20px; height: 24px; overflow: hidden; margin: 16px 0; }
+        .set-card.owned .card-set-name { color: var(--accent); }
+        .set-card.missing { opacity: 0.5; }
+        .set-card.missing:hover { opacity: 0.75; }
+        .set-card img { width: 65px; height: 88px; object-fit: contain; margin: 0 auto 6px; display: block; }
+        .set-card .card-num { font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+        .set-card .card-set-name { font-size: 11px; font-weight: 600; margin-top: 2px; line-height: 1.3; min-height: 28px; color: var(--text-muted); }
+        .set-card.holo .card-set-name {
+            background: linear-gradient(135deg, #ff6b9d, #c44dff, #6bcfff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .set-card.holo { border-color: rgba(196,77,255,0.4); }
+        .set-card.holo::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #ff6b9d, #c44dff, #6bcfff);
+        }
+
+        /* Progress bar */
+        .progress-bar { background: var(--bg); border-radius: 20px; height: 28px; overflow: hidden; margin: 16px 0; position: relative; }
         .progress-bar-fill {
             height: 100%; border-radius: 20px;
             background: linear-gradient(90deg, var(--accent), var(--purple));
-            transition: width 0.5s ease;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex; align-items: center; justify-content: flex-end;
-            padding-right: 8px; font-size: 12px; font-weight: 700; color: #000;
+            padding-right: 10px; font-size: 13px; font-weight: 700; color: #000;
+            min-width: 40px;
         }
+
+        /* Stats cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .stat-card {
+            background: var(--card-glass); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 16px; text-align: center;
+        }
+        .stat-card .stat-num { font-size: 2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+        .stat-card .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+        /* Generation tabs */
         .gen-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
         .gen-tab {
             padding: 10px 20px; border-radius: 24px; cursor: pointer;
             background: var(--card); color: var(--text-muted); border: 1px solid var(--border);
             font-size: 14px; font-weight: 500; transition: var(--transition);
+            display: flex; align-items: center; gap: 6px;
         }
         .gen-tab:hover { background: var(--card-hover); }
         .gen-tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
+        .gen-tab .tab-count { font-size: 11px; opacity: 0.8; }
+
+        /* View toggle */
+        .view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+        .view-btn {
+            background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+            padding: 8px 14px; color: var(--text-muted); cursor: pointer; font-size: 13px;
+            transition: var(--transition);
+        }
+        .view-btn:hover { background: var(--card-hover); }
+        .view-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+        /* Filter buttons */
+        .filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filter-chip {
+            background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+            padding: 6px 14px; font-size: 12px; color: var(--text-muted); cursor: pointer;
+            transition: var(--transition);
+        }
+        .filter-chip:hover { background: var(--card-hover); }
+        .filter-chip.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+        /* Checklist view */
+        .checklist { font-size: 14px; }
+        .checklist-row {
+            display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer;
+            transition: var(--transition);
+        }
+        .checklist-row:hover { background: var(--card-hover); }
+        .checklist-row.owned { opacity: 1; }
+        .checklist-row.missing { opacity: 0.4; }
+        .checklist-row .cl-check { width: 20px; text-align: center; font-size: 16px; }
+        .checklist-row .cl-num { width: 36px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .checklist-row .cl-name { flex: 1; font-weight: 500; }
+        .checklist-row .cl-gen { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--bg); }
+
+        /* Export buttons */
+        .export-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+        /* Confetti animation */
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .confetti { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 9999; }
+        .confetti-piece {
+            position: absolute; width: 10px; height: 10px;
+            animation: confetti-fall 3s ease-in forwards;
+        }
+
+        /* Completion badge */
+        .completion-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            color: #000; padding: 6px 16px; border-radius: 20px;
+            font-weight: 700; font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -87,7 +192,7 @@ $completionPct = $totalCards > 0 ? round(($ownedCount / $totalCards) * 100) : 0;
                 <?php if ($user): ?>
                 <span class="desktop-link" style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars($user['display_name']) ?></span>
                 <?php else: ?>
-                <button class="btn btn-outline btn-sm" onclick="window.location.href='/toxic-market/'">Anmelden</button>
+                <button class="btn btn-outline btn-sm" onclick="showAuth()">Anmelden</button>
                 <?php endif; ?>
                 <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
@@ -99,52 +204,141 @@ $completionPct = $totalCards > 0 ? round(($ownedCount / $totalCards) * 100) : 0;
             <a href="/toxic-market/#auctions">🔨 Auktionen</a>
             <?php if ($user): ?>
             <a href="/toxic-market/dashboard">📊 Dashboard</a>
+            <?php else: ?>
+            <a href="#" onclick="showAuth();toggleMobileNav();return false;">🔑 Anmelden</a>
             <?php endif; ?>
         </div>
     </nav>
 
     <div class="container" style="max-width:1000px; padding: 30px 20px 60px;">
-        <h1 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;">📋 Set Builder</h1>
-        <p style="color:var(--text-muted);margin-bottom:24px;">Welche Karten fehlen dir? Klicke auf Karten, die du besitzt.</p>
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
+            <div>
+                <h1 style="font-size:1.8rem;font-weight:800;margin-bottom:4px;">📋 Set Builder</h1>
+                <p style="color:var(--text-muted);">Klicke auf Karten, die du besitzt — dein Fortschritt wird gespeichert.</p>
+            </div>
+            <?php if (!$user): ?>
+            <div style="background:rgba(247,147,26,0.08);border:1px solid rgba(247,147,26,0.2);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--text-muted);max-width:280px;">
+                💡 Melde dich an, um deinen Fortschritt dauerhaft zu speichern.
+            </div>
+            <?php endif; ?>
+        </div>
 
-        <!-- Progress -->
-        <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:24px;">
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-num" style="color:var(--accent);" id="owned-count"><?= $ownedCount ?></div>
+                <div class="stat-label">Besitzt</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" style="color:var(--text-dim);" id="missing-count"><?= $totalCards - $ownedCount ?></div>
+                <div class="stat-label">Fehlt</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" style="color:var(--bitcoin);" id="completion-pct"><?= $completionPct ?>%</div>
+                <div class="stat-label">Komplett</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" style="color:var(--purple);" id="total-cards"><?= $totalCards ?></div>
+                <div class="stat-label">Gesamt</div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:24px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-size:1.2rem;font-weight:700;"><?= $ownedCount ?> / <?= $totalCards ?> Karten</span>
-                <span style="color:var(--accent);font-weight:600;font-size:1.2rem;"><?= $completionPct ?>%</span>
+                <span style="font-weight:600;">Fortschritt</span>
+                <span class="completion-badge" id="completion-badge"><?= $completionPct ?>%</span>
             </div>
             <div class="progress-bar">
-                <div class="progress-bar-fill" style="width:<?= $completionPct ?>%"><?= $completionPct ?>%</div>
+                <div class="progress-bar-fill" id="progress-fill" style="width:<?= $completionPct ?>%"><?= $completionPct ?>%</div>
             </div>
-            <div style="display:flex;gap:16px;margin-top:12px;font-size:13px;color:var(--text-muted);">
-                <span>🟢 Besitzt du</span>
-                <span>⬜ Fehlt noch</span>
+
+            <!-- Per-gen mini progress -->
+            <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+                <?php foreach ([1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'] as $g => $label):
+                    $genTotal = $genCounts[$g] ?? 0;
+                    $genOwned = $ownedPerGen[$g] ?? 0;
+                    $genPct = $genTotal > 0 ? round(($genOwned / $genTotal) * 100) : 0;
+                    $genColors = [1=>'var(--accent)', 2=>'var(--purple)', 3=>'#6bcfff'];
+                ?>
+                <div style="flex:1;min-width:120px;">
+                    <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;"><?= $label ?> · <?= $genOwned ?>/<?= $genTotal ?></div>
+                    <div style="background:var(--bg);border-radius:10px;height:8px;overflow:hidden;">
+                        <div style="height:100%;border-radius:10px;background:<?= $genColors[$g] ?>;width:<?= $genPct ?>%;transition:width 0.5s ease;"></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
             </div>
         </div>
 
         <!-- Generation Tabs -->
         <div class="gen-tabs">
-            <span class="gen-tab <?= !$generation ? 'active' : '' ?>" onclick="location.href='/toxic-market/set-builder'">Alle (<?= $totalCards ?>)</span>
-            <?php foreach ([1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'] as $g => $label): ?>
-            <span class="gen-tab <?= $generation == $g ? 'active' : '' ?>" onclick="location.href='/toxic-market/set-builder?gen=<?= $g ?>'"><?= $label ?> (<?= $genCounts[$g] ?? 0 ?>)</span>
+            <span class="gen-tab <?= !$generation ? 'active' : '' ?>" onclick="filterGen(0)">Alle <span class="tab-count"><?= $totalCards ?></span></span>
+            <?php foreach ([1=>'🧪 Genesis 2025',2=>'🏰 Zitadelle 2026',3=>'🌍 Remake EN'] as $g => $label): ?>
+            <span class="gen-tab <?= $generation == $g ? 'active' : '' ?>" onclick="filterGen(<?= $g ?>)"><?= $label ?> <span class="tab-count"><?= $genCounts[$g] ?? 0 ?></span></span>
             <?php endforeach; ?>
         </div>
 
-        <!-- Cards Grid -->
-        <div class="set-grid">
+        <!-- View Toggle + Filters -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+            <div class="view-toggle">
+                <button class="view-btn active" onclick="setView('grid')" id="view-grid">🔲 Grid</button>
+                <button class="view-btn" onclick="setView('list')" id="view-list">📋 Liste</button>
+            </div>
+            <div class="filter-row">
+                <button class="filter-chip active" data-filter="all" onclick="setFilter('all')">Alle</button>
+                <button class="filter-chip" data-filter="owned" onclick="setFilter('owned')">✅ Besitzt</button>
+                <button class="filter-chip" data-filter="missing" onclick="setFilter('missing')">❌ Fehlt</button>
+                <button class="filter-chip" data-filter="holo" onclick="setFilter('holo')">✨ Holo</button>
+            </div>
+        </div>
+
+        <!-- Grid View -->
+        <div class="set-grid" id="cards-grid-view">
             <?php foreach ($cards as $card):
                 $isOwned = in_array($card['id'], $ownedIds);
                 $holos = json_decode($card['holo_positions'], true) ?: [];
-                $imgUrl = "/toxic-market/cards/card.svg.php?id={$card['id']}&gen={$card['generation']}&name=" . urlencode($card['name']) . "&holo=" . (in_array(21, $holos) ? '1' : '0');
-                $genLabel = [1=>'G1',2=>'Z6',3=>'RE'][$card['generation']] ?? '';
+                $isHolo = !empty($holos);
+                $imgUrl = "/toxic-market/cards/card.svg.php?id={$card['id']}&gen={$card['generation']}&name=" . urlencode($card['name']) . "&holo=" . ($isHolo ? '1' : '0');
+                $genLabel = [1=>'Genesis',2=>'Zitadelle',3=>'Remake'][$card['generation']] ?? '';
+                $genClass = "gen-{$card['generation']}";
             ?>
-            <div class="set-card <?= $isOwned ? 'owned' : '' ?> <?= in_array(21, $holos) ? 'holo' : '' ?>" 
-                 data-id="<?= $card['id'] ?>" onclick="toggleCard(<?= $card['id'] ?>, this)">
+            <div class="set-card <?= $isOwned ? 'owned' : 'missing' ?> <?= $isHolo ? 'holo' : ?> <?= !$isOwned ? 'missing' : '' ?>"
+                 data-id="<?= $card['id'] ?>" data-owned="<?= $isOwned ? '1' : '0' ?>" data-holo="<?= $isHolo ? '1' : '0' ?>" data-gen="<?= $card['generation'] ?>"
+                 onclick="toggleCard(<?= $card['id'] ?>, this)">
                 <img src="<?= $imgUrl ?>" alt="<?= htmlspecialchars($card['name']) ?>" loading="lazy">
-                <div class="card-num">#<?= $card['id'] ?> · <?= $genLabel ?></div>
+                <div class="card-num">#<?= $card['id'] ?></div>
                 <div class="card-set-name"><?= htmlspecialchars($card['name']) ?></div>
             </div>
             <?php endforeach; ?>
+        </div>
+
+        <!-- Checklist View -->
+        <div class="checklist hidden" id="cards-list-view">
+            <?php foreach ($cards as $card):
+                $isOwned = in_array($card['id'], $ownedIds);
+                $holos = json_decode($card['holo_positions'], true) ?: [];
+                $isHolo = !empty($holos);
+                $genLabel = [1=>'Genesis',2=>'Zitadelle',3=>'Remake'][$card['generation']] ?? '';
+                $genColors = [1=>'var(--accent)', 2=>'var(--purple)', 3=>'#6bcfff'];
+            ?>
+            <div class="checklist-row <?= $isOwned ? 'owned' : 'missing' ?>"
+                 data-id="<?= $card['id'] ?>" data-owned="<?= $isOwned ? '1' : '0' ?>" data-holo="<?= $isHolo ? '1' : '0' ?>" data-gen="<?= $card['generation'] ?>"
+                 onclick="toggleCard(<?= $card['id'] ?>, this)">
+                <div class="cl-check"><?= $isOwned ? '✅' : '⬜' ?></div>
+                <div class="cl-num">#<?= $card['id'] ?></div>
+                <div class="cl-name" style="<?= $isHolo ? 'background:linear-gradient(90deg,#ff6b9d,#c44dff,#6bcfff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;' : '' ?>"><?= htmlspecialchars($card['name']) ?> <?= $isHolo ? '✨' : '' ?></div>
+                <div class="cl-gen" style="color:<?= $genColors[$card['generation']] ?>;border:1px solid <?= $genColors[$card['generation']] ?>30;"><?= $genLabel ?></div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Export -->
+        <div class="export-row">
+            <button class="btn btn-outline btn-sm" onclick="exportCollection()">📋 Als Text kopieren</button>
+            <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV Export</button>
+            <button class="btn btn-outline btn-sm" onclick="shareNostr()">🌐 Auf Nostr teilen</button>
         </div>
     </div>
 
@@ -157,25 +351,212 @@ $completionPct = $totalCards > 0 ? round(($ownedCount / $totalCards) * 100) : 0;
     <script src="/toxic-market/js/nostr.js"></script>
     <script src="/toxic-market/js/toxic.js"></script>
     <script>
-    async function toggleCard(cardId, el) {
-        const isOwned = el.classList.contains('owned');
-        
-        // Toggle visually immediately
+    const OWNED_IDS = <?= json_encode(array_values($ownedIds)) ?>;
+    const TOTAL_CARDS = <?= $totalCards ?>;
+    let currentFilter = 'all';
+    let currentGen = <?= $generation ?>;
+    let currentView = 'grid';
+
+    function toggleCard(cardId, el) {
+        const wasOwned = el.classList.contains('owned');
         el.classList.toggle('owned');
+        el.classList.toggle('missing');
         
-        // Save to server if logged in
-        try {
-            await fetch('/toxic-market/api/api.php?action=toggle_collection', {
+        // Update check icon in list view
+        const listRow = document.querySelector(`.checklist-row[data-id="${cardId}"]`);
+        if (listRow) {
+            listRow.classList.toggle('owned');
+            listRow.classList.toggle('missing');
+            const check = listRow.querySelector('.cl-check');
+            if (check) check.textContent = wasOwned ? '⬜' : '✅';
+        }
+        
+        // Update grid data
+        const gridCard = document.querySelector(`.set-card[data-id="${cardId}"]`);
+        if (gridCard) {
+            gridCard.dataset.owned = wasOwned ? '0' : '1';
+        }
+        
+        // Update stats
+        const delta = wasOwned ? -1 : 1;
+        updateStats(delta);
+        
+        // Animate
+        if (!wasOwned) {
+            el.style.transform = 'scale(1.1)';
+            setTimeout(() => el.style.transform = '', 200);
+        }
+        
+        // Save
+        if (OWNED_IDS !== false) {
+            fetch('/toxic-market/api/api.php?action=toggle_collection', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ card_id: cardId, owned: !isOwned })
+                body: JSON.stringify({ card_id: cardId, owned: !wasOwned })
+            }).catch(() => {
+                // Revert on error
+                el.classList.toggle('owned');
+                el.classList.toggle('missing');
+                updateStats(-delta);
             });
-        } catch(e) {
-            // Revert on error
-            el.classList.toggle('owned');
+        } else {
+            // Guest mode — save to localStorage
+            let local = JSON.parse(localStorage.getItem('tm_collection') || '[]');
+            if (!wasOwned) local.push(cardId);
+            else local = local.filter(id => id !== cardId);
+            localStorage.setItem('tm_collection', JSON.stringify(local));
+            updateStats(0); // recount
         }
     }
+
+    function updateStats(delta) {
+        // Recount owned cards from DOM
+        const ownedCards = document.querySelectorAll('.set-card.owned, .checklist-row.owned');
+        const uniqueOwned = new Set();
+        ownedCards.forEach(el => uniqueOwned.add(el.dataset.id));
+        const count = uniqueOwned.size;
+        const pct = Math.round((count / TOTAL_CARDS) * 100);
+        
+        document.getElementById('owned-count').textContent = count;
+        document.getElementById('missing-count').textContent = TOTAL_CARDS - count;
+        document.getElementById('completion-pct').textContent = pct + '%';
+        document.getElementById('completion-badge').textContent = pct + '%';
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-fill').textContent = pct + '%';
+        
+        // Confetti at 100%!
+        if (pct >= 100) launchConfetti();
+    }
+
+    function setView(view) {
+        currentView = view;
+        document.getElementById('cards-grid-view').classList.toggle('hidden', view !== 'grid');
+        document.getElementById('cards-list-view').classList.toggle('hidden', view !== 'list');
+        document.getElementById('view-grid').classList.toggle('active', view === 'grid');
+        document.getElementById('view-list').classList.toggle('active', view === 'list');
+    }
+
+    function setFilter(filter) {
+        currentFilter = filter;
+        document.querySelectorAll('.filter-chip').forEach(ch => ch.classList.remove('active'));
+        document.querySelector(`.filter-chip[data-filter="${filter}"]`).classList.add('active');
+        
+        document.querySelectorAll('.set-card, .checklist-row').forEach(el => {
+            const isOwned = el.dataset.owned === '1';
+            const isHolo = el.dataset.holo === '1';
+            const gen = parseInt(el.dataset.gen);
+            
+            let show = true;
+            if (filter === 'owned' && !isOwned) show = false;
+            if (filter === 'missing' && isOwned) show = false;
+            if (filter === 'holo' && !isHolo) show = false;
+            if (currentGen > 0 && gen !== currentGen) show = false;
+            
+            el.style.display = show ? '' : 'none';
+        });
+    }
+
+    function filterGen(gen) {
+        currentGen = gen;
+        if (gen === 0) {
+            location.href = '/toxic-market/set-builder';
+        } else {
+            location.href = '/toxic-market/set-builder?gen=' + gen;
+        }
+    }
+
+    function exportCollection() {
+        const ownedCards = document.querySelectorAll('.set-card.owned, .checklist-row.owned');
+        const lines = ['🧪 Toxic Market — Meine Sammlung', ''];
+        const uniqueIds = new Set();
+        ownedCards.forEach(el => {
+            if (uniqueIds.has(el.dataset.id)) return;
+            uniqueIds.add(el.dataset.id);
+            const name = el.querySelector('.card-set-name, .cl-name')?.textContent?.trim() || `Karte #${el.dataset.id}`;
+            lines.push(`✅ #${el.dataset.id} ${name}`);
+        });
+        lines.push('', `📊 ${uniqueIds.size}/${TOTAL_CARDS} (${Math.round(uniqueIds.size/TOTAL_CARDS*100)}%)`);
+        lines.push('', 'toxic-market.ml-bets.com/set-builder');
+        
+        navigator.clipboard.writeText(lines.join('\n')).then(() => {
+            toast('Sammlung kopiert!', 'success');
+        });
+    }
+
+    function exportCSV() {
+        const rows = [['ID', 'Name', 'Generation', 'Besitzt']];
+        document.querySelectorAll('.set-card, .checklist-row').forEach(el => {
+            const id = el.dataset.id;
+            const isOwned = el.dataset.owned === '1';
+            const gen = el.dataset.gen;
+            const name = el.querySelector('.card-set-name, .cl-name')?.textContent?.trim() || '';
+            rows.push([id, `"${name}"`, gen, isOwned ? 'Ja' : 'Nein']);
+        });
+        const csv = rows.map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'toxic-market-collection.csv'; a.click();
+        URL.revokeObjectURL(url);
+        toast('CSV heruntergeladen!', 'success');
+    }
+
+    async function shareNostr() {
+        const ownedCards = document.querySelectorAll('.set-card.owned, .checklist-row.owned');
+        const uniqueIds = new Set();
+        ownedCards.forEach(el => uniqueIds.add(el.dataset.id));
+        const pct = Math.round(uniqueIds.size / TOTAL_CARDS * 100);
+        
+        const text = `🧪 Toxic Market Sammlung: ${uniqueIds.size}/${TOTAL_CARDS} (${pct}%)\n\n#ToxicMarket #MX12ART #Bitcoin`;
+        
+        if (window.NostrTM && NostrTM.hasNsec()) {
+            const nsec = NostrTM.loadNsec();
+            const name = document.querySelector('.nav-inner span[style*="accent"]')?.textContent || 'Anonymous';
+            try {
+                const event = await NostrTM.publishProfile(nsec, name, `Toxic Market Sammler · ${pct}% komplett`, '');
+                toast('Auf Nostr geteilt!', 'success');
+            } catch(e) {
+                // Fallback: copy text
+                navigator.clipboard.writeText(text).then(() => toast('In Zwischenablage kopiert!', 'success'));
+            }
+        } else {
+            navigator.clipboard.writeText(text).then(() => toast('Text kopiert — teile es auf Nostr!', 'success'));
+        }
+    }
+
+    function launchConfetti() {
+        const colors = ['#00ff88', '#c44dff', '#6bcfff', '#ff6b9d', '#f7931a'];
+        const container = document.createElement('div');
+        container.className = 'confetti';
+        document.body.appendChild(container);
+        for (let i = 0; i < 80; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'confetti-piece';
+            piece.style.left = Math.random() * 100 + '%';
+            piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+            piece.style.animationDelay = Math.random() * 2 + 's';
+            piece.style.animationDuration = (2 + Math.random() * 2) + 's';
+            piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+            piece.style.width = (6 + Math.random() * 8) + 'px';
+            piece.style.height = (6 + Math.random() * 8) + 'px';
+            container.appendChild(piece);
+        }
+        setTimeout(() => container.remove(), 5000);
+    }
+
+    // Load guest collection from localStorage if not logged in
+    <?php if (!$user): ?>
+    (function() {
+        const local = JSON.parse(localStorage.getItem('tm_collection') || '[]');
+        local.forEach(id => {
+            const el = document.querySelector(`.set-card[data-id="${id}"]`);
+            if (el) { el.classList.add('owned'); el.classList.remove('missing'); }
+            const row = document.querySelector(`.checklist-row[data-id="${id}"]`);
+            if (row) { row.classList.add('owned'); row.classList.remove('missing'); const c = row.querySelector('.cl-check'); if (c) c.textContent = '✅'; }
+        });
+    })();
+    <?php endif; ?>
     </script>
 </body>
 </html>
