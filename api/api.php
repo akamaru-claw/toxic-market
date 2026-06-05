@@ -145,7 +145,6 @@ try {
                 $holo = in_array($card['card_number'], $card['holo_positions'] ?? []) ? '1' : '0';
                 $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . $holo;
             }
-            }
             
             // Get variants
             $stmt2 = $db->prepare('SELECT * FROM card_variants WHERE template_id = ?');
