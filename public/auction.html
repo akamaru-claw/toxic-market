@@ -151,7 +151,7 @@ $priceEur = satsToEur($currentPrice, $prices['eur']);
                     <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
                         <?php if (count($bids) > 0): ?>Aktuelles Gebot<?php else: ?>Startpreis<?php endif; ?>
                     </div>
-                    <div style="font-size:2.8rem;font-weight:900;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;">
+                    <div id="auction-price-display" style="font-size:2.8rem;font-weight:900;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;transition:transform 0.3s;">
                         <?= number_format($currentPrice) ?>
                     </div>
                     <div style="font-size:14px;color:var(--text-dim);margin-top:4px;">Sats ≈ €<?= number_format($priceEur, 2) ?></div>
@@ -244,21 +244,57 @@ $priceEur = satsToEur($currentPrice, $prices['eur']);
         </div>
     </div>
 
-    <!-- Countdown Timer -->
+    <!-- Countdown Timer + Live Price Update -->
     <?php if ($isLive): ?>
     <script>
     const endTime = new Date('<?= $ends->format('c') ?>').getTime();
+    const auctionId = '<?= $auction['id'] ?>';
+    let currentPrice = <?= $currentPrice ?>;
+
+    // Countdown
     setInterval(() => {
-        const now = new Date().getTime();
+        const now = Date.now();
         const diff = endTime - now;
         if (diff <= 0) { location.reload(); return; }
-        const days = Math.floor(diff / 86400000);
-        const hours = Math.floor((diff % 86400000) / 3600000);
-        const mins = Math.floor((diff % 3600000) / 60000);
-        const secs = Math.floor((diff % 60000) / 1000);
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
         const el = document.getElementById('countdown');
-        if (el) el.textContent = `${days}T ${hours}h ${mins}m ${secs}s`;
+        if (el) {
+            if (d > 0) el.textContent = `${d}T ${h}h ${m}m ${s}s`;
+            else if (h > 0) el.textContent = `${h}h ${m}m ${s}s`;
+            else el.textContent = `${m}m ${s}s`;
+        }
+        // Urgency
+        const banner = document.querySelector('[style*="rgba(0,255,136"]');
+        if (diff < 3600000 && el) el.parentElement.style.borderColor = 'rgba(255,68,85,0.4)';
     }, 1000);
+
+    // Live price polling every 15s
+    setInterval(async () => {
+        try {
+            const res = await fetch(`/toxic-market/api/api.php?action=auction&id=${auctionId}`);
+            const data = await res.json();
+            if (data.current_price_sats && data.current_price_sats !== currentPrice) {
+                currentPrice = data.current_price_sats;
+                // Animate price change
+                const priceEl = document.getElementById('auction-price-display');
+                if (priceEl) {
+                    priceEl.textContent = Number(currentPrice).toLocaleString();
+                    priceEl.style.transform = 'scale(1.1)';
+                    setTimeout(() => priceEl.style.transform = 'scale(1)', 300);
+                }
+                const priceEurEl = document.getElementById('price-eur');
+                if (priceEurEl && data.bids) {
+                    // Update bid count too
+                    const bidEls = document.querySelectorAll('.bid-count');
+                    bidEls.forEach(el => el.textContent = data.bids?.length || 0);
+                }
+                toast(`Neues Gebot: ${Number(currentPrice).toLocaleString()} sats!`, 'warning', 5000);
+            }
+        } catch(e) {}
+    }, 15000);
     </script>
     <?php endif; ?>
 

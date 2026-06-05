@@ -410,6 +410,68 @@ function updateAuctionTimer(elId, endsAt) {
     auctionTimers.push(id);
 }
 
+// ─── Password Reset ───
+let resetToken = '';
+
+function showResetPassword() {
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('reset-form').classList.remove('hidden');
+    document.querySelector('.auth-divider').classList.add('hidden');
+    document.querySelector('.auth-tabs').classList.add('hidden');
+}
+
+function backToLogin() {
+    document.getElementById('login-form').classList.remove('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('reset-form').classList.add('hidden');
+    document.querySelector('.auth-divider').classList.remove('hidden');
+    document.querySelector('.auth-tabs').classList.remove('hidden');
+}
+
+async function handleRequestReset() {
+    const email = document.getElementById('reset-email').value.trim();
+    if (!email) { toast('E-Mail eingeben', 'error'); return; }
+    try {
+        const res = await fetch(API + '?action=request_reset', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (data.success && data.token) {
+            resetToken = data.token;
+            document.getElementById('reset-token-area').classList.remove('hidden');
+            document.getElementById('reset-token-display').textContent = data.token;
+            toast('Token generiert! Setze jetzt dein Passwort zurück.', 'success');
+        } else {
+            toast(data.message || 'E-Mail nicht gefunden', data.success ? 'info' : 'error');
+        }
+    } catch(e) {
+        toast('Server-Fehler', 'error');
+    }
+}
+
+async function handleResetPassword() {
+    const password = document.getElementById('reset-new-password').value;
+    if (!resetToken) { toast('Erst Token generieren', 'warning'); return; }
+    if (password.length < 6) { toast('Mind. 6 Zeichen', 'error'); return; }
+    try {
+        const res = await fetch(API + '?action=reset_password', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: resetToken, password })
+        });
+        const data = await res.json();
+        if (data.success) {
+            toast('Passwort geändert! Jetzt anmelden.', 'success');
+            backToLogin();
+        } else {
+            toast(data.error || 'Fehler beim Zurücksetzen', 'error');
+        }
+    } catch(e) {
+        toast('Server-Fehler', 'error');
+    }
+}
+
 function showCreateListing(cardId) {
     if (!currentUser) { showAuth(); return; }
     if (cardId) {

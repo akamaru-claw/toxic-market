@@ -776,6 +776,48 @@ try {
             echo json_encode($result);
             break;
 
+        // === REQUEST PASSWORD RESET ===
+        case 'request_reset':
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $email = trim($data['email'] ?? '');
+            
+            if (!$email) throw new Exception('Email required', 400);
+            
+            $token = generateResetToken($email);
+            if (!$token) {
+                // Don't reveal whether email exists
+                echo json_encode(['success' => true, 'message' => 'Wenn die E-Mail existiert, wurde ein Reset-Token generiert.']);
+                break;
+            }
+            
+            echo json_encode(['success' => true, 'token' => $token, 'message' => 'Reset-Token generiert.']);
+            break;
+
+        // === VERIFY RESET TOKEN ===
+        case 'verify_reset':
+            $token = $_GET['token'] ?? '';
+            $reset = verifyResetToken($token);
+            if (!$reset) throw new Exception('Invalid or expired token', 400);
+            echo json_encode(['success' => true, 'email' => substr($reset['email'], 0, 3) . '***' . strstr($reset['email'], '@')]);
+            break;
+
+        // === RESET PASSWORD ===
+        case 'reset_password':
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $token = $data['token'] ?? '';
+            $newPassword = $data['password'] ?? '';
+            
+            if (strlen($newPassword) < 6) throw new Exception('Passwort muss mindestens 6 Zeichen haben', 400);
+            
+            if (!resetPassword($token, $newPassword)) {
+                throw new Exception('Token ungültig oder abgelaufen', 400);
+            }
+            
+            echo json_encode(['success' => true, 'message' => 'Passwort erfolgreich zurückgesetzt.']);
+            break;
+
         // === USER PROFILE UPDATE ===
         case 'update_profile':
             $user = requireAuth();

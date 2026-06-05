@@ -190,6 +190,7 @@
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">Anmelden</button>
                 <p id="login-error" class="error hidden"></p>
+                <p style="text-align:center;margin-top:12px;"><a href="#" onclick="showResetPassword();return false;" style="font-size:13px;color:var(--text-muted);">Passwort vergessen?</a></p>
             </form>
 
             <!-- Register -->
@@ -215,6 +216,27 @@
                 <button type="submit" class="btn btn-primary btn-full">Account erstellen</button>
                 <p id="reg-error" class="error hidden"></p>
             </form>
+
+            <!-- Reset Password -->
+            <div id="reset-form" class="auth-form hidden">
+                <h3 style="margin-bottom:16px;font-size:1.1rem;">🔐 Passwort zurücksetzen</h3>
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Gib deine E-Mail ein. Du erhältst ein Token zum Zurücksetzen.</p>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reset-email" required placeholder="name@example.com">
+                </div>
+                <button class="btn btn-primary btn-full" onclick="handleRequestReset()">Token generieren</button>
+                <div id="reset-token-area" class="hidden" style="margin-top:16px;">
+                    <div class="proof-hash-box" style="font-size:11px;word-break:break-all;" id="reset-token-display"></div>
+                    <div class="form-group" style="margin-top:12px;">
+                        <label>Neues Passwort (mind. 6 Zeichen)</label>
+                        <input type="password" id="reset-new-password" required placeholder="Neues Passwort" minlength="6">
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="handleResetPassword()">Passwort ändern</button>
+                </div>
+                <p id="reset-error" class="error hidden" style="margin-top:8px;"></p>
+                <p style="text-align:center;margin-top:12px;"><a href="#" onclick="backToLogin();return false;" style="font-size:13px;color:var(--text-muted);">← Zurück zur Anmeldung</a></p>
+            </div>
 
             <div class="auth-divider"><span>oder</span></div>
             <button class="btn btn-bitcoin btn-full" onclick="loginNostr()">

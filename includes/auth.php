@@ -92,6 +92,46 @@ function logout(): void {
     session_destroy();
 }
 
+function generateResetToken(string $email): ?string {
+    $db = getDB();
+    $stmt = $db->prepare('SELECT id FROM users WHERE email = ?');
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+    if (!$user) return null;
+    
+    $token = bin2hex(random_bytes(32));
+    $expires = date('Y-m-d H:i:s', time() + 3600); // 1 hour
+    
+    // Create reset_tokens table if not exists
+    $db->exec('CREATE TABLE IF NOT EXISTS reset_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, token TEXT, expires_at DATETIME, used INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))');
+    
+    $stmt = $db->prepare('INSERT INTO reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)');
+    $stmt->execute([$user['id'], $token, $expires]);
+    
+    return $token;
+}
+
+function verifyResetToken(string $token): ?array {
+    $db = getDB();
+    $db->exec('CREATE TABLE IF NOT EXISTS reset_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, token TEXT, expires_at DATETIME, used INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))');
+    
+    $stmt = $db->prepare('SELECT rt.*, u.email FROM reset_tokens rt JOIN users u ON rt.user_id = u.id WHERE rt.token = ? AND rt.used = 0 AND rt.expires_at > datetime(\'now\')');
+    $stmt->execute([$token]);
+    return $stmt->fetch() ?: null;
+}
+
+function resetPassword(string $token, string $newPassword): bool {
+    $reset = verifyResetToken($token);
+    if (!$reset) return false;
+    
+    $db = getDB();
+    $hash = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+    $db->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([$hash, $reset['user_id']]);
+    $db->prepare('UPDATE reset_tokens SET used = 1 WHERE token = ?')->execute([$token]);
+    
+    return true;
+}
+
 function generateCSRF(): string {
     $token = bin2hex(random_bytes(32));
     $_SESSION['csrf_token'] = $token;
