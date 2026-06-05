@@ -477,3 +477,21 @@ img, svg, video, iframe, table, pre { max-width: 100%; height: auto; }
 .bid-hint { color: var(--text2); font-size: 0.8rem; margin-bottom: 12px; }
 .btn-bid { width: 100%; padding: 12px; font-size: 1rem; margin-top: 4px; }
 .auction-own-note { color: var(--accent); font-size: 0.85rem; text-align: center; padding: 12px; background: var(--bg2); border-radius: var(--radius-sm); }
+
+/* Dashboard improvements */
+.dashboard-section { margin-bottom: 24px; }
+.dashboard-section h3 { color: var(--text); margin-bottom: 12px; font-size: 1rem; }
+.auction-card-mini, .bid-item, .listing-mini { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg2); border-radius: var(--radius-sm); margin-bottom: 6px; cursor: pointer; transition: background 0.2s; }
+.auction-card-mini:hover, .bid-item:hover, .listing-mini:hover { background: var(--bg3); }
+.auction-mini-info, .bid-item-info { display: flex; flex-direction: column; gap: 2px; }
+.auction-mini-title, .bid-item-title, .listing-mini-title { font-size: 0.85rem; }
+.auction-mini-price, .bid-item-amount, .listing-mini-price { color: var(--accent); font-family: monospace; font-size: 0.85rem; }
+.collection-grid-mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 8px; }
+.collection-mini-card { text-align: center; cursor: pointer; transition: transform 0.2s; }
+.collection-mini-card:hover { transform: scale(1.05); }
+.collection-mini-img { width: 100%; border-radius: 6px; aspect-ratio: 3/4; object-fit: cover; }
+.collection-mini-name { display: block; font-size: 0.65rem; color: var(--text2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.collection-mini-fallback { font-size: 2rem; display: block; }
+.collection-more { display: flex; align-items: center; justify-content: center; background: var(--bg2); border-radius: 6px; padding: 10px; color: var(--accent); font-size: 0.85rem; cursor: pointer; }
+.text-muted { color: var(--text2); }
+.text-muted a { color: var(--accent); }
