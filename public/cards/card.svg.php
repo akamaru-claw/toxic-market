@@ -86,7 +86,7 @@ echo <<<SVG
     <circle cx="38" cy="45" r="1.5" fill="{$c['accent']}" opacity="0.6"/>
     <!-- Steam -->
     <path d="M 32,-5 Q 37,-20 42,-5" fill="none" stroke="{$c['accent']}" stroke-width="1" opacity="0.4"/>
-    <path d="M 36,-10 Q 41,-25 46,-10" fill="none" stroke="{$c['accent']}}" stroke-width="1" opacity="0.3"/>
+    <path d="M 36,-10 Q 41,-25 46,-10" fill="none" stroke="{$c['accent']}" stroke-width="1" opacity="0.3"/>
   </g>
 
   <!-- Card name -->
