@@ -145,10 +145,10 @@ function renderCards() {
         
         return `
         <div class="card-item" onclick="showCard(${card.id})">
-            <div class="card-img">🧪</div>
+            <img src="${card.image_url}" alt="${card.name}" class="card-img" loading="lazy" onerror="this.outerHTML='<div class=\\'card-img\\'>🧪</div>'">
             <div class="card-info">
                 <div class="card-name">${card.name}</div>
-                <div class="card-meta">210 Stück</div>
+                <div class="card-meta">${card.total_print_run} Stück</div>
                 ${holoInfo ? `<div class="card-holo">${holoInfo}</div>` : ''}
                 <span class="card-gen ${genClass}">${genLabel}</span>
                 ${priceHTML}
