@@ -309,6 +309,8 @@ async function loadListings() {
 }
 
 // Auctions
+let auctionTimers = [];
+
 async function loadAuctions() {
     try {
         const res = await api('auctions');
@@ -319,11 +321,13 @@ async function loadAuctions() {
             grid.innerHTML = '<p class="empty">Keine aktiven Auktionen. <a href="/toxic-market/create-auction">Erstelle die erste!</a></p>';
             return;
         }
+        // Clear old timers
+        auctionTimers.forEach(id => clearInterval(id));
+        auctionTimers = [];
+        
         grid.innerHTML = auctions.map(a => {
             const images = JSON.parse(a.image_urls || '[]');
             const imgUrl = images[0] || `/toxic-market/cards/card.svg.php?id=${a.card_template_id}&gen=${a.generation}&name=${encodeURIComponent(a.card_name || a.title)}&holo=0`;
-            const ends = new Date(a.ends_at);
-            const timeLeft = getTimeLeft(ends);
             const genClass = `gen-${a.generation}`;
             const genLabel = {1:'Genesis 2025',2:'Zitadelle 2026',3:'Remake EN'}[a.generation] || '';
             return `
@@ -335,23 +339,47 @@ async function loadAuctions() {
                     <span class="card-gen ${genClass}" style="font-size:9px;">${genLabel}</span>
                     <div class="listing-title" style="margin-top:4px;">🔨 ${a.title}</div>
                     <div class="listing-price">${(a.current_price_sats || a.starting_price_sats).toLocaleString()} sats</div>
-                    <div class="auction-timer" style="font-size:13px;">⏱ ${timeLeft}</div>
+                    <div class="auction-timer" data-ends="${a.ends_at}" id="timer-${a.id}" style="font-size:13px;">⏱ ...</div>
                     <div class="listing-meta">${a.bid_count || 0} Gebote · ${a.seller_name}</div>
                 </div>
             </div>`;
         }).join('');
+        
+        // Start countdown timers
+        auctions.forEach(a => {
+            updateAuctionTimer(`timer-${a.id}`, a.ends_at);
+        });
+        
+        // Refresh auctions every 60s
+        const refreshId = setInterval(() => {
+            auctionTimers.forEach(id => clearInterval(id));
+            loadAuctions();
+        }, 60000);
+        auctionTimers.push(refreshId);
     } catch (e) { console.error(e); }
 }
 
-function getTimeLeft(date) {
-    const diff = date - new Date();
-    if (diff < 0) return 'Beendet';
-    const days = Math.floor(diff / 86400000);
-    const hours = Math.floor((diff % 86400000) / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    if (days > 0) return `${days}T ${hours}h`;
-    if (hours > 0) return `${hours}h ${mins}m`;
-    return `${mins}m`;
+function updateAuctionTimer(elId, endsAt) {
+    const ends = new Date(endsAt).getTime();
+    function tick() {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        const diff = ends - Date.now();
+        if (diff <= 0) { el.textContent = '⏹ Beendet'; el.style.color = 'var(--danger)'; return; }
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        if (d > 0) el.textContent = `⏱ ${d}T ${h}h ${m}m`;
+        else if (h > 0) el.textContent = `⏱ ${h}h ${m}m ${s}s`;
+        else el.textContent = `⏱ ${m}m ${s}s`;
+        // Urgency colors
+        if (diff < 3600000) el.style.color = 'var(--danger)';
+        else if (diff < 86400000) el.style.color = 'var(--bitcoin)';
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    auctionTimers.push(id);
 }
 
 function showCreateListing(cardId) {

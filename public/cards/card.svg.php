@@ -12,11 +12,11 @@ $name = $_GET['name'] ?? 'Unknown';
 $serial = $_GET['serial'] ?? '';
 $holo = filter_var($_GET['holo'] ?? '0', FILTER_VALIDATE_BOOLEAN);
 
-// Generation colors
+// Generation colors & icons
 $colors = [
-    1 => ['bg' => '#0a1628', 'accent' => '#00ff88', 'label' => 'GENESIS 2025', 'gradient' => ['#001a0d', '#0a1628']],
-    2 => ['bg' => '#1a0a28', 'accent' => '#c44dff', 'label' => 'ZITADELLE 2026', 'gradient' => ['#0d001a', '#1a0a28']],
-    3 => ['bg' => '#0a1a28', 'accent' => '#6bcfff', 'label' => 'REMAKE EN', 'gradient' => ['#001a2e', '#0a1a28']],
+    1 => ['bg' => '#0a1628', 'accent' => '#00ff88', 'label' => 'GENESIS 2025', 'gradient' => ['#001a0d', '#0a1628'], 'icon' => 'gen1'],
+    2 => ['bg' => '#1a0a28', 'accent' => '#c44dff', 'label' => 'ZITADELLE 2026', 'gradient' => ['#0d001a', '#1a0a28'], 'icon' => 'gen2'],
+    3 => ['bg' => '#0a1a28', 'accent' => '#6bcfff', 'label' => 'REMAKE EN', 'gradient' => ['#001a2e', '#0a1a28'], 'icon' => 'gen3'],
 ];
 $c = $colors[$gen] ?? $colors[1];
 
@@ -28,7 +28,7 @@ $holo_positions = json_decode($holo_positions_str, true) ?: [];
 $cardNumber = (($id - 1) % 21) + 1;
 $total = $gen === 3 ? 35 : 210;
 
-// Build holo display text
+// Holo display text
 $holoBadge = '';
 if (!empty($holo_positions)) {
     $positions = implode(', ', $holo_positions);
@@ -36,8 +36,55 @@ if (!empty($holo_positions)) {
 }
 
 // Holo effect
-$holoFilter = $holo ? 'filter="url(#holo)"' : '';
+$holoFilter = $holo ? ' filter="url(#holo)"' : '';
 $holoBorder = $holo ? 'stroke="url(#holoGrad)" stroke-width="3"' : 'stroke="' . $c['accent'] . '" stroke-width="1.5"';
+
+// Generation-specific center icons
+$iconGen1 = '<g transform="translate(100, 100)" opacity="0.9"' . $holoFilter . '>
+    <!-- Toxic flask -->
+    <path d="M 20,0 L 55,0 L 55,55 L 50,80 L 25,80 L 20,55 Z" fill="none" stroke="' . $c['accent'] . '" stroke-width="2.5"/>
+    <path d="M 24,35 L 52,35 L 52,53 L 48,76 L 27,76 L 24,53 Z" fill="' . $c['accent'] . '" opacity="0.25"/>
+    <circle cx="35" cy="48" r="4" fill="' . $c['accent'] . '" opacity="0.5"/>
+    <circle cx="44" cy="56" r="3" fill="' . $c['accent'] . '" opacity="0.4"/>
+    <circle cx="39" cy="42" r="2" fill="' . $c['accent'] . '" opacity="0.6"/>
+    <path d="M 32,-5 Q 37,-22 42,-5" fill="none" stroke="' . $c['accent'] . '" stroke-width="1.2" opacity="0.5"/>
+    <path d="M 36,-10 Q 41,-28 46,-10" fill="none" stroke="' . $c['accent'] . '" stroke-width="1" opacity="0.4"/>
+</g>';
+
+$iconGen2 = '<g transform="translate(96, 88)" opacity="0.9"' . $holoFilter . '>
+    <!-- Citadel tower -->
+    <rect x="10" y="10" width="60" height="80" rx="4" fill="none" stroke="' . $c['accent'] . '" stroke-width="2"/>
+    <rect x="20" y="0" width="40" height="15" rx="2" fill="' . $c['accent'] . '" opacity="0.3"/>
+    <rect x="35" y="-5" width="10" height="8" rx="1" fill="' . $c['accent'] . '" opacity="0.5"/>
+    <line x1="20" y1="30" x2="30" y2="30" stroke="' . $c['accent'] . '" stroke-width="1.5" opacity="0.4"/>
+    <line x1="20" y1="45" x2="30" y2="45" stroke="' . $c['accent'] . '" stroke-width="1.5" opacity="0.4"/>
+    <line x1="20" y1="60" x2="30" y2="60" stroke="' . $c['accent'] . '" stroke-width="1.5" opacity="0.4"/>
+    <line x1="50" y1="30" x2="60" y2="30" stroke="' . $c['accent'] . '" stroke-width="1.5" opacity="0.4"/>
+    <line x1="50" y1="45" x2="60" y2="45" stroke="' . $c['accent'] . '" stroke-width="1.5" opacity="0.4"/>
+    <line x1="50" y1="60" x2="60" y2="60" stroke="' . $c['accent'] . '" stroke-width="1.5" opacity="0.4"/>
+    <circle cx="40" cy="50" r="12" fill="none" stroke="' . $c['accent'] . '" stroke-width="1" opacity="0.3"/>
+    <text x="40" y="54" text-anchor="middle" fill="' . $c['accent'] . '" font-family="monospace" font-size="14" opacity="0.6">₿</text>
+</g>';
+
+$iconGen3 = '<g transform="translate(100, 100)" opacity="0.9"' . $holoFilter . '>
+    <!-- Globe/world icon for EN remakes -->
+    <circle cx="40" cy="40" r="35" fill="none" stroke="' . $c['accent'] . '" stroke-width="2"/>
+    <ellipse cx="40" cy="40" rx="18" ry="35" fill="none" stroke="' . $c['accent'] . '" stroke-width="1.2" opacity="0.5"/>
+    <line x1="5" y1="40" x2="75" y2="40" stroke="' . $c['accent'] . '" stroke-width="1" opacity="0.5"/>
+    <line x1="40" y1="5" x2="40" y2="75" stroke="' . $c['accent'] . '" stroke-width="1" opacity="0.5"/>
+    <text x="40" y="46" text-anchor="middle" fill="' . $c['accent'] . '" font-family="Arial,sans-serif" font-size="20" font-weight="700" opacity="0.7">EN</text>
+</g>';
+
+$iconSvg = $gen === 1 ? $iconGen1 : ($gen === 2 ? $iconGen2 : $iconGen3);
+
+// Background pattern (subtle hex grid)
+$pattern = '';
+for ($py = 0; $py < 380; $py += 30) {
+    for ($px = 0; $px < 280; $px += 30) {
+        $opacity = 0.02 + (rand(0, 5) * 0.005);
+        $pattern .= "<circle cx='{$px}' cy='{$py}' r='1' fill='" . $c['accent'] . "' opacity='{$opacity}'/>";
+    }
+}
 
 echo <<<SVG
 <svg xmlns="http://www.w3.org/2000/svg" width="280" height="380" viewBox="0 0 280 380">
@@ -71,6 +118,9 @@ echo <<<SVG
   <!-- Card background -->
   <rect width="280" height="380" rx="16" fill="url(#cardBg)" {$holoBorder}/>
 
+  <!-- Subtle dot pattern -->
+  {$pattern}
+
   <!-- Top accent line -->
   <rect x="20" y="16" width="240" height="1" fill="url(#accentGrad)" opacity="0.6"/>
 
@@ -84,20 +134,8 @@ echo <<<SVG
   <!-- Main illustration area -->
   <rect x="20" y="56" width="240" height="200" rx="12" fill="{$c['bg']}" stroke="{$c['accent']}" stroke-width="0.5" opacity="0.8"/>
 
-  <!-- Toxic booster flask icon -->
-  <g transform="translate(100, 100)" opacity="0.9" {$holoFilter}>
-    <!-- Flask body -->
-    <path d="M 20,0 L 55,0 L 55,60 L 45,80 L 30,80 L 20,60 Z" fill="none" stroke="{$c['accent']}" stroke-width="2"/>
-    <!-- Liquid -->
-    <path d="M 24,40 L 52,40 L 52,58 L 44,76 L 31,76 L 24,58 Z" fill="{$c['accent']}" opacity="0.3"/>
-    <!-- Bubbles -->
-    <circle cx="35" cy="50" r="3" fill="{$c['accent']}" opacity="0.5"/>
-    <circle cx="42" cy="58" r="2" fill="{$c['accent']}" opacity="0.4"/>
-    <circle cx="38" cy="45" r="1.5" fill="{$c['accent']}" opacity="0.6"/>
-    <!-- Steam -->
-    <path d="M 32,-5 Q 37,-20 42,-5" fill="none" stroke="{$c['accent']}" stroke-width="1" opacity="0.4"/>
-    <path d="M 36,-10 Q 41,-25 46,-10" fill="none" stroke="{$c['accent']}" stroke-width="1" opacity="0.3"/>
-  </g>
+  <!-- Generation-specific icon -->
+  {$iconSvg}
 
   <!-- Card name -->
   <text x="140" y="280" text-anchor="middle" fill="#e8e8f8" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700">{$name}</text>
