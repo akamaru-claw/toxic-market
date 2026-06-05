@@ -10,7 +10,7 @@ $listId = $_GET['id'] ?? '';
 if (!$listId) { header('Location: /toxic-market/'); exit; }
 
 $stmt = $db->prepare('SELECT l.*, ct.name as card_name, ct.generation, ct.description as card_desc, ct.holo_positions, ct.total_print_run,
-    u.display_name as seller_name, u.bio as seller_bio, u.id as seller_id, u.created_at as seller_since, u.total_sales
+    u.display_name as seller_name, u.bio as seller_bio, u.id as seller_id, u.created_at as seller_since, u.total_sales, u.nostr_pubkey as seller_nostr
     FROM listings l 
     JOIN card_templates ct ON l.card_template_id = ct.id
     JOIN users u ON l.seller_id = u.id
@@ -177,75 +177,20 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                     </select>
                 </div>
 
-                <!-- Buy Button -->
-                <button class="btn btn-bitcoin btn-full" style="margin-top:16px;padding:16px;font-size:16px;font-weight:700;" id="buy-btn" onclick="initiatePayment()">
-                    ⚡ Kaufen für <?= number_format($listing['price_sats']) ?> Sats
+                <!-- Contact Seller -->
+                <div style="background:rgba(247,147,26,0.06);border:1px solid rgba(247,147,26,0.2);border-radius:12px;padding:16px;margin-top:16px;">
+                    <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px;">
+                        ⚠️ <strong>Du handelst direkt mit dem Verkäufer.</strong> Toxic Market ist nur ein Marktplatz — keine Zahlungen, keine Haftung, kein Custody.
+                    </p>
+                </div>
+
+                <button class="btn btn-bitcoin btn-full" style="margin-top:12px;padding:16px;font-size:16px;font-weight:700;" onclick="contactSeller()">
+                    💬 Verkäufer kontaktieren
                 </button>
 
                 <p style="text-align:center;font-size:11px;color:var(--text-dim);margin-top:8px;">
-                    Du handelst direkt mit dem Verkäufer. Toxic Market verwahrt kein Geld.
+                    Kontaktiere den Verkäufer direkt und einigt euch.
                 </p>
-
-                <!-- Payment Modal -->
-                <div id="payment-modal" class="modal hidden">
-                    <div class="modal-backdrop" onclick="closePaymentModal()"></div>
-                    <div class="modal-content" style="max-width:480px;">
-                        <button class="modal-close" onclick="closePaymentModal()">✕</button>
-                        <h2 style="font-size:1.3rem;margin-bottom:16px;">⚡ P2P Kauf</h2>
-                        <div id="payment-content">
-                            <!-- Disclaimer -->
-                            <div style="background:rgba(247,147,26,0.08);border:1px solid rgba(247,147,26,0.2);border-radius:12px;padding:14px;margin-bottom:20px;">
-                                <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">
-                                    ⚠️ <strong>Du handelst direkt mit dem Verkäufer.</strong> Toxic Market verwahrt kein Geld und übernimmt keine Haftung. Sende die Zahlung nur, wenn du dem Verkäufer vertraust.
-                                </p>
-                            </div>
-                            
-                            <div style="text-align:center;padding:16px 0;">
-                                <div style="font-size:14px;color:var(--text-muted);margin-bottom:4px;">Gesamt</div>
-                                <div style="font-size:2rem;font-weight:800;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;" id="pay-amount"></div>
-                                <div style="font-size:13px;color:var(--text-dim);margin-top:4px;" id="pay-amount-eur"></div>
-                            </div>
-
-                            <div id="p2p-payment-steps" style="margin-top:16px;">
-                                <div style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);border-radius:12px;padding:16px;">
-                                    <h3 style="font-size:14px;color:var(--accent);margin-bottom:12px;">💳 So funktioniert's</h3>
-                                    <ol style="font-size:13px;color:var(--text-muted);padding-left:20px;line-height:2;">
-                                        <li>Kontaktiere <strong id="seller-name-display"><?= htmlspecialchars($listing['seller_name']) ?></strong></li>
-                                        <li>Sende <strong id="manual-amount"></strong> per Lightning direkt an den Verkäufer</li>
-                                        <li>Bestätige hier, dass du gezahlt hast</li>
-                                        <li>Der Verkäufer bestätigt den Zahlungseingang</li>
-                                        <li>Deal! 🤝</li>
-                                    </ol>
-                                </div>
-                                
-                                <!-- Step 1: Buyer pays -->
-                                <div id="step-buyer-pay" style="margin-top:16px;">
-                                    <button class="btn btn-bitcoin btn-full" style="padding:14px;font-size:15px;" onclick="buyerConfirmedPayment()">
-                                        ✅ Ich habe gezahlt
-                                    </button>
-                                    <button class="btn btn-outline btn-full" style="margin-top:8px;padding:10px;font-size:13px;" onclick="closePaymentModal()">
-                                        ❌ Abbrechen
-                                    </button>
-                                </div>
-                                
-                                <!-- Step 2: Waiting for seller -->
-                                <div id="step-waiting-seller" class="hidden" style="margin-top:16px;text-align:center;">
-                                    <div style="font-size:48px;margin-bottom:8px;">⏳</div>
-                                    <div style="font-size:15px;font-weight:600;">Warte auf Verkäufer</div>
-                                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Der Verkäufer muss den Zahlungseingang bestätigen.</div>
-                                </div>
-                                
-                                <!-- Step 3: Complete -->
-                                <div id="step-complete" class="hidden" style="margin-top:16px;text-align:center;">
-                                    <div style="font-size:48px;margin-bottom:8px;">🤝</div>
-                                    <div style="font-size:15px;font-weight:600;color:var(--accent);">Deal abgeschlossen!</div>
-                                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Der Verkäufer hat die Zahlung bestätigt.</div>
-                                    <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="window.location.reload()">Seite aktualisieren</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -307,86 +252,30 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
     <?php endif; ?>
     updateTotal();
 
-    async function initiatePayment() {
-        if (!LOGGED_IN) {
-            toast('Bitte melde dich an, um zu kaufen.', 'warning');
-            window.location.href = '/toxic-market/';
-            return;
-        }
+    function contactSeller() {
+        const sellerName = '<?= htmlspecialchars($listing['seller_name'], ENT_QUOTES) ?>';
+        const sellerId = '<?= $listing['seller_id'] ?>';
         
-        const btn = document.getElementById('buy-btn');
-        btn.disabled = true;
-        btn.textContent = '⏳ Wird vorbereitet...';
-        
-        try {
-            const res = await fetch('/toxic-market/api/api.php?action=initiate_payment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ listing_id: LISTING_ID })
+        // Check if seller has Nostr key — could be used for DM
+        <?php if (!empty($listing['seller_nostr'])): ?>
+        const nostrPubkey = '<?= htmlspecialchars($listing['seller_nostr'], ENT_QUOTES) ?>';
+        // Try to open Nostr DM via NIP-07 extension
+        if (window.nostr) {
+            toast('Öffne Nostr DM an ' + sellerName, 'info');
+            // User can use their Nostr client to DM
+            navigator.clipboard.writeText(nostrPubkey).then(() => {
+                toast('Nostr-Pubkey kopiert! Sende eine DM über deinen Nostr-Client.', 'success');
             });
-            const data = await res.json();
-            
-            if (data.success) {
-                document.getElementById('payment-modal').classList.remove('hidden');
-                document.getElementById('pay-amount').textContent = data.amount_sats.toLocaleString() + ' sats';
-                document.getElementById('manual-amount').textContent = data.amount_sats.toLocaleString() + ' sats';
-                if (data.amount_eur) {
-                    document.getElementById('pay-amount-eur').textContent = `≈ €${data.amount_eur}`;
-                }
-                window.currentTransactionId = data.transaction_id;
-            } else {
-                toast(data.error || 'Fehler beim Initiieren', 'error');
-            }
-        } catch (e) {
-            toast('Server-Fehler', 'error');
-        }
-        
-        btn.disabled = false;
-        btn.innerHTML = '⚡ Kaufen für ' + PRICE_SATS.toLocaleString() + ' Sats';
-    }
-
-    function closePaymentModal() {
-        document.getElementById('payment-modal').classList.add('hidden');
-    }
-
-    async function buyerConfirmedPayment() {
-        if (!window.currentTransactionId) return;
-        try {
-            const res = await fetch('/toxic-market/api/api.php?action=buyer_confirms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ transaction_id: window.currentTransactionId })
+        } else {
+            navigator.clipboard.writeText(nostrPubkey).then(() => {
+                toast('Nostr-Pubkey kopiert! Kontaktiere ' + sellerName + ' über Nostr.', 'success');
             });
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('step-buyer-pay').classList.add('hidden');
-                document.getElementById('step-waiting-seller').classList.remove('hidden');
-                toast('Zahlung gemeldet! Warte auf Verkäufer-Bestätigung.', 'success');
-                
-                // Poll for seller confirmation
-                const poll = setInterval(async () => {
-                    try {
-                        const checkRes = await fetch(`/toxic-market/api/api.php?action=payment_status&id=${window.currentTransactionId}`);
-                        const checkData = await checkRes.json();
-                        if (checkData.status === 'confirmed_manual') {
-                            clearInterval(poll);
-                            document.getElementById('step-waiting-seller').classList.add('hidden');
-                            document.getElementById('step-complete').classList.remove('hidden');
-                        } else if (checkData.status === 'rejected' || checkData.status === 'cancelled') {
-                            clearInterval(poll);
-                            toast('Verkäufer hat die Zahlung abgelehnt.', 'error');
-                            closePaymentModal();
-                        }
-                    } catch(e) {}
-                }, 10000);
-            } else {
-                toast(data.error || 'Fehler', 'error');
-            }
-        } catch (e) {
-            toast('Server-Fehler', 'error');
         }
+        <?php else: ?>
+        // No Nostr — redirect to seller profile
+        window.location.href = '/toxic-market/seller/' + sellerId;
+        toast('Kontaktiere ' + sellerName + ' über das Profil.', 'info');
+        <?php endif; ?>
     }
     </script>
 </body>

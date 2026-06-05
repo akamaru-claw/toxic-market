@@ -76,9 +76,18 @@ $stats = [
             <div style="width:80px;height:80px;border-radius:50%;background:var(--holo-gradient);display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 16px;">👤</div>
             <h1 style="font-size:1.8rem;font-weight:800;margin:0;"><?= htmlspecialchars($seller['display_name']) ?></h1>
             <?php if ($seller['nostr_pubkey']): ?>
-            <div style="font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:4px;word-break:break-all;">
-                🔑 <?= substr($seller['nostr_pubkey'], 0, 16) ?>...
+            <div style="margin-top:16px;">
+                <button class="btn btn-outline btn-sm" onclick="copyNostr()" style="font-size:12px;">
+                    🔑 Nostr-Pubkey kopieren
+                </button>
             </div>
+            <script>
+            function copyNostr() {
+                navigator.clipboard.writeText('<?= htmlspecialchars($seller['nostr_pubkey']) ?>').then(() => {
+                    toast('Nostr-Pubkey kopiert!', 'success');
+                });
+            }
+            </script>
             <?php endif; ?>
             <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Mitglied seit <?= date('M Y', strtotime($seller['created_at'])) ?></div>
             
