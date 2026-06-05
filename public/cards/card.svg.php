@@ -25,8 +25,8 @@ $holoFilter = $holo ? 'filter="url(#holo)"' : '';
 $holoBorder = $holo ? 'stroke="url(#holoGrad)" stroke-width="3"' : 'stroke="' . $c['accent'] . '" stroke-width="1.5"';
 $holoBadge = $holo ? '<text x="140" y="185" text-anchor="middle" fill="url(#holoGrad)" font-family="monospace" font-size="10" font-weight="700">✨ HOLO</text>' : '';
 
-// Card number display
-$number = $id;
+// Card number within generation (1-21)
+$cardNumber = (($id - 1) % 21) + 1;
 $total = $gen === 3 ? 35 : 210;
 
 echo <<<SVG
@@ -69,7 +69,7 @@ echo <<<SVG
   <text x="76" y="38" text-anchor="middle" fill="{$c['accent']}" font-family="monospace" font-size="9" font-weight="700" letter-spacing="1">{$c['label']}</text>
 
   <!-- Card number -->
-  <text x="264" y="38" text-anchor="end" fill="{$c['accent']}" font-family="monospace" font-size="11" opacity="0.6">#{$number}</text>
+  <text x="264" y="38" text-anchor="end" fill="{$c['accent']}" font-family="monospace" font-size="11" opacity="0.6">#{$cardNumber}</text>
 
   <!-- Main illustration area -->
   <rect x="20" y="56" width="240" height="200" rx="12" fill="{$c['bg']}" stroke="{$c['accent']}" stroke-width="0.5" opacity="0.8"/>
@@ -93,7 +93,7 @@ echo <<<SVG
   <text x="140" y="280" text-anchor="middle" fill="#e8e8f8" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700">{$name}</text>
 
   <!-- Edition info -->
-  <text x="140" y="298" text-anchor="middle" fill="#7878a8" font-family="monospace" font-size="10">{$total} Edition · #{$number}</text>
+  <text x="140" y="298" text-anchor="middle" fill="#7878a8" font-family="monospace" font-size="10">{$total} Edition · #{$cardNumber}</text>
 
   {$holoBadge}
 
