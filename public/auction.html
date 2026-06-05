@@ -87,14 +87,25 @@ $priceEur = satsToEur($currentPrice, $prices['eur']);
         <div class="nav-inner">
             <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
             <div class="nav-links">
-                <a href="/toxic-market/#cards">Karten</a>
-                <a href="/toxic-market/#auctions">Auktionen</a>
+                <a href="/toxic-market/#cards" class="desktop-link">Karten</a>
+                <a href="/toxic-market/#auctions" class="desktop-link">Auktionen</a>
                 <?php if (isLoggedIn()): ?>
-                <a href="/toxic-market/dashboard" style="color:var(--accent);text-decoration:none;font-size:13px;">📊</a> <span style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars(currentUser()['display_name']) ?></span>
+                <span class="desktop-link" style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars(currentUser()['display_name']) ?></span>
                 <?php else: ?>
-                <button class="btn btn-outline btn-sm" onclick="window.location.href='/toxic-market/'">Anmelden</button>
+                <button class="btn btn-outline btn-sm" onclick="showAuth()">Anmelden</button>
                 <?php endif; ?>
+                <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav hidden">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <?php if (isLoggedIn()): ?>
+            <a href="/toxic-market/dashboard">📊 Dashboard</a>
+            <?php else: ?>
+            <a href="#" onclick="showAuth();toggleMobileNav();return false;">🔑 Anmelden</a>
+            <?php endif; ?>
         </div>
     </nav>
 

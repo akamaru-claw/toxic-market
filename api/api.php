@@ -21,6 +21,28 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/payments.php';
 
+/**
+ * Auto-end expired auctions
+ */
+function autoEndExpiredAuctions(PDO $db): void {
+    $stmt = $db->prepare("UPDATE auctions SET status = 'ended' WHERE status = 'active' AND ends_at <= datetime('now')");
+    $stmt->execute();
+    
+    // Set winner for ended auctions with bids
+    $ended = $db->query("SELECT id FROM auctions WHERE status = 'ended' AND winner_id IS NULL")->fetchAll();
+    foreach ($ended as $auction) {
+        // Highest bidder wins
+        $stmt2 = $db->prepare('SELECT bidder_id FROM bids WHERE auction_id = ? ORDER BY amount_sats DESC LIMIT 1');
+        $stmt2->execute([$auction['id']]);
+        $winner = $stmt2->fetch();
+        if ($winner) {
+            $db->prepare('UPDATE auctions SET winner_id = ? WHERE id = ?')->execute([$winner['bidder_id'], $auction['id']]);
+            // Increment seller's total_sales
+            $db->prepare('UPDATE users SET total_sales = total_sales + 1 WHERE id = (SELECT seller_id FROM auctions WHERE id = ?)')->execute([$auction['id']]);
+        }
+    }
+}
+
 $db = getDB();
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];

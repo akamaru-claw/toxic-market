@@ -1,4 +1,13 @@
 <IfModule mod_rewrite.c>
+    # Security Headers
+    <IfModule mod_headers.c>
+        Header set X-Content-Type-Options "nosniff"
+        Header set X-Frame-Options "DENY"
+        Header set Referrer-Policy "strict-origin-when-cross-origin"
+        Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    </IfModule>
+
     # Cache control — force reload for CSS/JS (versioned), cache images
 <IfModule mod_expires.c>
     ExpiresActive On

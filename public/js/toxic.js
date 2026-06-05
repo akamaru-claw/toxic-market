@@ -13,7 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAuctions();
     checkAuth();
     setupFilters();
+    // Close mobile nav on link click
+    document.querySelectorAll('#mobile-nav a').forEach(a => {
+        a.addEventListener('click', () => {
+            const nav = document.getElementById('mobile-nav');
+            if (nav) nav.classList.add('hidden');
+        });
+    });
 });
+
+// Toggle mobile hamburger nav
+function toggleMobileNav() {
+    const nav = document.getElementById('mobile-nav');
+    if (nav) nav.classList.toggle('hidden');
+}
 
 // API helper
 async function api(action, data = null, method = 'GET') {
@@ -68,22 +81,6 @@ function showLoggedIn() {
     });
     document.querySelectorAll('#create-auction-btn-2').forEach(el => {
         if (el) el.style.display = 'inline-flex';
-    });
-}
-
-function showLoggedOut() {
-    const btn = document.getElementById('login-btn');
-    const menu = document.getElementById('user-menu');
-    if (btn) btn.classList.remove('hidden');
-    if (menu) {
-        menu.classList.add('hidden');
-        menu.style.display = 'none';
-    }
-    document.querySelectorAll('#create-listing-btn, #create-listing-btn-2, #create-auction-btn').forEach(el => {
-        if (el) el.classList.add('hidden');
-    });
-    document.querySelectorAll('#create-auction-btn-2').forEach(el => {
-        if (el) el.style.display = 'none';
     });
 }
 

@@ -81,14 +81,24 @@ $completionPct = $totalCards > 0 ? round(($ownedCount / $totalCards) * 100) : 0;
         <div class="nav-inner">
             <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
             <div class="nav-links">
-                <a href="/toxic-market/#cards">Karten</a>
-                <a href="/toxic-market/set-builder" style="color:var(--accent);">📋 Set Builder</a>
+                <a href="/toxic-market/#cards" class="desktop-link">Karten</a>
+                <a href="/toxic-market/set-builder" class="desktop-link" style="color:var(--accent);">📋 Set Builder</a>
                 <?php if ($user): ?>
-                <span style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars($user['display_name']) ?></span>
+                <span class="desktop-link" style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars($user['display_name']) ?></span>
                 <?php else: ?>
                 <button class="btn btn-outline btn-sm" onclick="window.location.href='/toxic-market/'">Anmelden</button>
                 <?php endif; ?>
+                <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav hidden">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/set-builder" style="color:var(--accent);">📋 Set Builder</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <?php if ($user): ?>
+            <a href="/toxic-market/dashboard">📊 Dashboard</a>
+            <?php endif; ?>
         </div>
     </nav>
 

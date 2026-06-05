@@ -58,11 +58,19 @@ $mySales = $stmt4->fetchAll();
         <div class="nav-inner">
             <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
             <div class="nav-links">
-                <a href="/toxic-market/#cards">Karten</a>
-                <a href="/toxic-market/#listings">Kaufen</a>
-                <span style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars($user['display_name']) ?></span>
-                <button class="btn btn-sm" onclick="logout()">Abmelden</button>
+                <a href="/toxic-market/#cards" class="desktop-link">Karten</a>
+                <a href="/toxic-market/#listings" class="desktop-link">Kaufen</a>
+                <span class="desktop-link" style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars($user['display_name']) ?></span>
+                <button class="btn btn-sm" onclick="logout()">✕</button>
+                <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav hidden">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <a href="/toxic-market/dashboard">📊 Dashboard</a>
+            <a href="#" onclick="logout();return false;">🚪 Abmelden</a>
         </div>
     </nav>
 

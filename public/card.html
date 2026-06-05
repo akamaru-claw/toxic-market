@@ -67,14 +67,22 @@ curl_close($ch);
         <div class="nav-inner">
             <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
             <div class="nav-links">
-                <a href="/toxic-market/#cards">Karten</a>
-                <a href="/toxic-market/#listings">Kaufen</a>
-                <button id="login-btn" class="btn btn-outline" onclick="showAuth()">Anmelden</button>
-                <div id="user-menu" class="hidden">
-                    <span id="user-name"></span>
-                    <button class="btn btn-sm" onclick="logout()">Abmelden</button>
+                <a href="/toxic-market/#cards" class="desktop-link">Karten</a>
+                <a href="/toxic-market/#listings" class="desktop-link">Kaufen</a>
+                <button id="login-btn" class="btn btn-outline btn-sm" onclick="showAuth()">Anmelden</button>
+                <div id="user-menu" class="hidden" style="display:flex;align-items:center;gap:8px;">
+                    <span id="user-name" style="color:var(--accent);font-weight:600;font-size:14px;"></span>
+                    <button class="btn btn-sm" onclick="logout()">✕</button>
                 </div>
+                <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav hidden">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <a id="mobile-dashboard" href="/toxic-market/dashboard" class="hidden">📊 Dashboard</a>
+            <a id="mobile-login" href="#" onclick="showAuth();toggleMobileNav();return false;">🔑 Anmelden</a>
         </div>
     </nav>
 

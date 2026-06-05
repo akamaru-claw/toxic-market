@@ -27,9 +27,16 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
         <div class="nav-inner">
             <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
             <div class="nav-links">
-                <a href="/toxic-market/#auctions">Auktionen</a>
-                <span style="color:var(--accent);font-weight:600;"><?= htmlspecialchars($user['display_name']) ?></span>
+                <a href="/toxic-market/#auctions" class="desktop-link">Auktionen</a>
+                <span class="desktop-link" style="color:var(--accent);font-weight:600;"><?= htmlspecialchars($user['display_name']) ?></span>
+                <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav hidden">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <a href="/toxic-market/dashboard">📊 Dashboard</a>
         </div>
     </nav>
 
