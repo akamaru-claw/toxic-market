@@ -169,7 +169,7 @@ class LightningPayments {
         // Update listing if applicable
         if ($tx['listing_id']) {
             $db->prepare('UPDATE listings SET is_sold = 1, buyer_id = ?, sold_at = datetime(\'now\') WHERE id = ?')
-                ->execute([$tx['payer_id'] ?? $confirmerId, $tx['listing_id']]);
+                ->execute([$tx['payer_id'] ?? 0, $tx['listing_id']]);
         }
         
         return ['success' => true, 'transaction_id' => $transactionId];

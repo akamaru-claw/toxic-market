@@ -33,6 +33,7 @@ try {
                 'logged_in' => isLoggedIn(),
                 'user' => currentUser(),
                 'auth_method' => $_SESSION['auth_method'] ?? null,
+                'csrf_token' => generateCSRF(),
             ]);
             break;
 
@@ -43,12 +44,14 @@ try {
             $password = $data['password'] ?? '';
             $display_name = $data['display_name'] ?? '';
             $accept_disclaimer = $data['accept_disclaimer'] ?? false;
+            $csrf = $data['csrf_token'] ?? '';
             
             if (!$email || !$password || !$display_name) {
                 throw new Exception('Email, password and display name required', 400);
             }
             if (strlen($password) < 6) throw new Exception('Password must be at least 6 characters', 400);
             if (!$accept_disclaimer) throw new Exception('You must accept the disclaimer', 400);
+            if (!verifyCSRF($csrf)) throw new Exception('Invalid CSRF token', 403);
             
             try {
                 $user = registerWithEmail($email, $password, $display_name);
@@ -63,10 +66,12 @@ try {
         case 'login':
             if ($method !== 'POST') throw new Exception('POST required', 405);
             $data = json_decode(file_get_contents('php://input'), true);
+            $csrf = $data['csrf_token'] ?? '';
             
             if (isset($data['nostr_pubkey'])) {
                 $user = loginWithNostr($data['nostr_pubkey']);
             } else {
+                if (!verifyCSRF($csrf)) throw new Exception('Invalid CSRF token', 403);
                 $email = $data['email'] ?? '';
                 $password = $data['password'] ?? '';
                 $user = loginWithEmail($email, $password);
@@ -108,16 +113,17 @@ try {
             $stmt->execute($params);
             $cards = $stmt->fetchAll();
             
+            // Decode JSON fields FIRST
+            foreach ($cards as &$card) {
+                $card['holo_positions'] = json_decode($card['holo_positions'], true);
+            }
+            
             // Add dynamic image URLs
             foreach ($cards as &$card) {
                 if (empty($card['image_url'])) {
-                    $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . (in_array($card['id'], json_decode($card['holo_positions'], true) ?: []) ? '1' : '0');
+                    $holo = in_array($card['id'], $card['holo_positions'] ?? []) ? '1' : '0';
+                    $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . $holo;
                 }
-            }
-            
-            // Decode JSON fields
-            foreach ($cards as &$card) {
-                $card['holo_positions'] = json_decode($card['holo_positions'], true);
             }
             
             echo json_encode(['data' => $cards, 'meta' => ['total' => count($cards)]]);
@@ -684,6 +690,25 @@ try {
             
             echo json_encode(['success' => true, 'display_name' => trim($displayName), 'bio' => trim($bio)]);
             break;
+
+        // === SERVE IMAGE (secure proxy) ===
+        case 'serve_image':
+            $filename = $_GET['file'] ?? '';
+            if (!preg_match('/^[a-f0-9]{16}_\d+\.(jpg|png|webp)$/', $filename)) {
+                http_response_code(400);
+                exit;
+            }
+            $filepath = $_SERVER['DOCUMENT_ROOT'] . '/../toxic-market/uploads/' . $filename;
+            if (!file_exists($filepath)) {
+                http_response_code(404);
+                exit;
+            }
+            $ext = pathinfo($filename, PATHINFO_EXTENSION);
+            $mime = match($ext) { 'jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp' };
+            header('Content-Type: ' . $mime);
+            header('Cache-Control: public, max-age=86400');
+            readfile($filepath);
+            exit;
 
         default:
             throw new Exception('Unknown action: ' . $action, 400);
