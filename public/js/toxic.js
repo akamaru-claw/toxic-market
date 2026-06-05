@@ -300,15 +300,17 @@ function renderCards() {
     grid.innerHTML = filtered.map(card => {
         const genLabel = { 1: 'Genesis 2025', 2: 'Zitadelle 2026', 3: 'Remake EN' }[card.generation];
         const genClass = `gen-${card.generation}`;
-        const holoInfo = card.holo_positions?.length ? `Holo: #${card.holo_positions.join(', #')}/210` : '';
-        const priceHTML = card.lowest_price ? `<div class="card-price">${card.lowest_price.toLocaleString()} sats</div>` : '';
+        const holoArr = Array.isArray(card.holo_positions) ? card.holo_positions : [];
+        const isHolo = holoArr.includes(Number(card.id)) || holoArr.includes(21);
+        const holoInfo = holoArr.length ? `Holo: #${holoArr.join(', #')}/${card.generation === 3 ? '35' : '210'}` : '';
+        const priceHTML = card.lowest_price ? `<div class="card-price">${Number(card.lowest_price).toLocaleString()} sats</div>` : '';
         const listingsHTML = card.active_listings ? `<div class="card-meta">${card.active_listings} Angebot${card.active_listings > 1 ? 'e' : ''}</div>` : '';
         const total = card.generation === 3 ? 35 : 210;
-        const imgUrl = card.image_url || `/toxic-market/cards/card.svg.php?id=${card.id}&gen=${card.generation}&name=${encodeURIComponent(card.name)}&holo=${(card.holo_positions?.includes(card.id) || card.holo_positions?.includes(21)) ? '1' : '0'}`;
+        const imgUrl = card.image_url || `/toxic-market/cards/card.svg.php?id=${card.id}&gen=${card.generation}&name=${encodeURIComponent(card.name)}&holo=${isHolo ? '1' : '0'}`;
         
         return `
         <div class="card-item" onclick="showCard(${card.id})">
-            <div class="card-img"><img src="${imgUrl}" alt="${card.name}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;" loading="lazy"></div>
+            <div class="card-img"><img src="${imgUrl}" alt="${card.name}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;" loading="lazy" onerror="this.src='/toxic-market/cards/card.svg.php?id=${card.id}&gen=${card.generation}&name=${encodeURIComponent(card.name)}&holo=0'"></div>
             <div class="card-info">
                 <div class="card-name">${card.name}</div>
                 <div class="card-meta">${total} Stück</div>
@@ -357,31 +359,32 @@ async function loadListings() {
             grid.innerHTML = '<p class="empty">Noch keine Angebote. <a href="#" onclick="showCreateListing()">Erstelle das Erste!</a></p>';
             return;
         }
-        grid.innerHTML = listings.map(l => {
+        const filterImages = document.getElementById('filter-images')?.checked;
+        let html = '';
+        for (const l of listings) {
             const images = parseImages(l.image_urls);
-            const hasImage = images && images.length > 0 && images[0];
-            const filterImages = document.getElementById('filter-images')?.checked;
-            if (filterImages && !hasImage) return ''; // Skip listings without images
+            const hasImage = Array.isArray(images) && images.length > 0 && images[0];
+            if (filterImages && !hasImage) continue;
             const imgUrl = hasImage ? images[0] : `/toxic-market/cards/card.svg.php?id=${l.card_template_id}&gen=${l.generation || 1}&name=${encodeURIComponent(l.card_name || l.title)}&holo=0`;
             const genClass = `gen-${l.generation || 1}`;
             const genLabel = {1:'Genesis 2025',2:'Zitadelle 2026',3:'Remake EN'}[l.generation] || '';
-            return `
+            html += `
             <div class="listing-item" style="cursor:pointer;" onclick="window.location.href='/toxic-market/listing/${l.id}'">
                 <div style="display:flex;gap:14px;">
                     <div style="width:80px;height:110px;background:linear-gradient(145deg,#1a1a3a,#0e0e20);border-radius:8px;overflow:hidden;flex-shrink:0;">
-                        <img src="${imgUrl}" style="width:100%;height:100%;object-fit:contain;" alt="${l.title}" loading="lazy">
+                        <img src="${imgUrl}" style="width:100%;height:100%;object-fit:contain;" alt="${l.title}" loading="lazy" onerror="this.src='/toxic-market/cards/card.svg.php?id=${l.card_template_id}&gen=${l.generation||1}&name=${encodeURIComponent(l.card_name||l.title)}&holo=0'">
                     </div>
                     <div style="flex:1;min-width:0;">
                         <span class="card-gen ${genClass}" style="font-size:9px;">${genLabel}</span>
                         <div class="listing-title" style="margin-top:4px;">${l.title}</div>
                         <div class="listing-price">${(l.price_sats || 0).toLocaleString()} sats</div>
-                        <div class="listing-meta">${l.condition_text} · ${l.seller_name}</div>
+                        <div class="listing-meta">${l.condition_text || ''}${l.seller_name ? ' · ' + l.seller_name : ''}</div>
                         ${l.serial_number ? `<div class="listing-meta">#${l.serial_number}</div>` : ''}
-                        ${l.free_shipping ? '<div style="font-size:11px;color:var(--accent);">🚚 Kostenloser Versand</div>' : ''}
                     </div>
                 </div>
             </div>`;
-        }).join('');
+        }
+        grid.innerHTML = html;
     } catch (e) { console.error(e); }
 }
 
@@ -404,20 +407,21 @@ async function loadAuctions() {
         
         grid.innerHTML = auctions.map(a => {
             const images = parseImages(a.image_urls);
-            const imgUrl = images[0] || `/toxic-market/cards/card.svg.php?id=${a.card_template_id}&gen=${a.generation}&name=${encodeURIComponent(a.card_name || a.title)}&holo=0`;
-            const genClass = `gen-${a.generation}`;
-            const genLabel = {1:'Genesis 2025',2:'Zitadelle 2026',3:'Remake EN'}[a.generation] || '';
+            const imgUrl = (Array.isArray(images) && images.length > 0 && images[0]) ? images[0] : `/toxic-market/cards/card.svg.php?id=${a.card_template_id || 1}&gen=${a.generation || 1}&name=${encodeURIComponent(a.card_name || a.title || 'Karte')}&holo=0`;
+            const genClass = `gen-${a.generation || 1}`;
+            const genLabel = {1:'Genesis 2025',2:'Zitadelle 2026',3:'Remake EN'}[a.generation || 1] || '';
+            const price = (a.current_price_sats || a.starting_price_sats || 0);
             return `
             <div class="listing-item" style="cursor:pointer;display:flex;gap:16px;" onclick="window.location.href='/toxic-market/auction/${a.id}'">
                 <div style="width:80px;height:110px;background:linear-gradient(145deg,#1a1a3a,#0e0e20);border-radius:8px;overflow:hidden;flex-shrink:0;">
-                    <img src="${imgUrl}" style="width:100%;height:100%;object-fit:contain;" alt="${a.title}" loading="lazy">
+                    <img src="${imgUrl}" style="width:100%;height:100%;object-fit:contain;" alt="${a.title || ''}" loading="lazy" onerror="this.src='/toxic-market/cards/card.svg.php?id=${a.card_template_id || 1}&gen=${a.generation || 1}&name=Karte&holo=0'">
                 </div>
                 <div style="flex:1;min-width:0;">
                     <span class="card-gen ${genClass}" style="font-size:9px;">${genLabel}</span>
-                    <div class="listing-title" style="margin-top:4px;">🔨 ${a.title}</div>
-                    <div class="listing-price">${(a.current_price_sats || a.starting_price_sats).toLocaleString()} sats</div>
+                    <div class="listing-title" style="margin-top:4px;">🔨 ${a.title || 'Auktion'}</div>
+                    <div class="listing-price">${Number(price).toLocaleString()} sats</div>
                     <div class="auction-timer" data-ends="${a.ends_at}" id="timer-${a.id}" style="font-size:13px;">⏱ ...</div>
-                    <div class="listing-meta">${a.bid_count || 0} Gebote · ${a.seller_name}</div>
+                    <div class="listing-meta">${a.bid_count || 0} Gebote${a.seller_name ? ' · ' + a.seller_name : ''}</div>
                 </div>
             </div>`;
         }).join('');
