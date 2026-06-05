@@ -6,7 +6,12 @@ let cards = [];
 let currentFilter = 'all';
 let currentUser = null;
 
-// ─── Toast System ───
+// Helper: safe parse image_urls (can be array or string)
+function parseImages(val) {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') { try { return JSON.parse(val); } catch(e) { return []; } }
+    return [];
+}
 function toast(msg, type = 'info', duration = 3500) {
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -353,7 +358,7 @@ async function loadListings() {
             return;
         }
         grid.innerHTML = listings.map(l => {
-            const images = JSON.parse(l.image_urls || '[]');
+            const images = parseImages(l.image_urls);
             const hasImage = images && images.length > 0 && images[0];
             const filterImages = document.getElementById('filter-images')?.checked;
             if (filterImages && !hasImage) return ''; // Skip listings without images
@@ -369,7 +374,7 @@ async function loadListings() {
                     <div style="flex:1;min-width:0;">
                         <span class="card-gen ${genClass}" style="font-size:9px;">${genLabel}</span>
                         <div class="listing-title" style="margin-top:4px;">${l.title}</div>
-                        <div class="listing-price">${l.price_sats.toLocaleString()} sats</div>
+                        <div class="listing-price">${(l.price_sats || 0).toLocaleString()} sats</div>
                         <div class="listing-meta">${l.condition_text} · ${l.seller_name}</div>
                         ${l.serial_number ? `<div class="listing-meta">#${l.serial_number}</div>` : ''}
                         ${l.free_shipping ? '<div style="font-size:11px;color:var(--accent);">🚚 Kostenloser Versand</div>' : ''}
@@ -398,7 +403,7 @@ async function loadAuctions() {
         auctionTimers = [];
         
         grid.innerHTML = auctions.map(a => {
-            const images = JSON.parse(a.image_urls || '[]');
+            const images = parseImages(a.image_urls);
             const imgUrl = images[0] || `/toxic-market/cards/card.svg.php?id=${a.card_template_id}&gen=${a.generation}&name=${encodeURIComponent(a.card_name || a.title)}&holo=0`;
             const genClass = `gen-${a.generation}`;
             const genLabel = {1:'Genesis 2025',2:'Zitadelle 2026',3:'Remake EN'}[a.generation] || '';
