@@ -89,7 +89,40 @@ class LightningPayments {
     }
     
     /**
-     * Check if an invoice has been paid
+     * Create on-chain invoice (returns BTC address)
+     */
+    public function createOnchainInvoice(int $amountSats, string $description, string $externalId = ''): array {
+        // For now, generate a static address from config or return manual
+        $configFile = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/payments_config.json';
+        $address = null;
+        if (file_exists($configFile)) {
+            $config = json_decode(file_get_contents($configFile), true);
+            $address = $config['onchain_address'] ?? null;
+        }
+        
+        if (!$address) {
+            // Fallback to manual with instructions
+            return array_merge(
+                $this->createManualInvoice($amountSats, $description, $externalId),
+                [
+                    'payment_method' => 'onchain',
+                    'instructions' => 'On-chain-Zahlung: Bitte Verkäufer kontaktieren für BTC-Adresse.',
+                ]
+            );
+        }
+        
+        return [
+            'success' => true,
+            'payment_hash' => $address,
+            'payment_request' => $address,
+            'amount_sats' => $amountSats,
+            'description' => $description,
+            'expires_at' => date('Y-m-d H:i:s', time() + 86400 * 3),
+            'source' => 'onchain',
+            'btc_address' => $address,
+            'instructions' => "Sende {$amountSats} sats an: {$address}",
+        ];
+    }
      */
     public function checkPayment(string $paymentHash): array {
         if (!$this->isAvailable()) {
@@ -121,7 +154,7 @@ class LightningPayments {
      * Manual invoice (when LNBits is not configured)
      * Buyer pays directly to seller's Lightning address or wallet
      */
-    private function createManualInvoice(int $amountSats, string $description, string $externalId = ''): array {
+    public function createManualInvoice(int $amountSats, string $description, string $externalId = ''): array {
         $db = getDB();
         $id = bin2hex(random_bytes(16));
         

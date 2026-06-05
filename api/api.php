@@ -256,6 +256,62 @@ try {
             echo json_encode(['success' => true, 'id' => $id]);
             break;
 
+        // === ADMIN: Payment Config ===
+        case 'payment_config':
+            $user = requireAuth();
+            if ($user['email'] !== 'akamaru.claw@gmx.de') throw new Exception('Admin only', 403);
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            
+            $config = [
+                'lnbits_url' => $data['lnbits_url'] ?? '',
+                'lnbits_api_key' => $data['lnbits_api_key'] ?? '',
+                'onchain_address' => $data['onchain_address'] ?? '',
+                'sandbox' => $data['sandbox'] ?? true,
+                'updated_at' => date('c'),
+            ];
+            
+            $configFile = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/payments_config.json';
+            if (!is_dir(dirname($configFile))) mkdir(dirname($configFile), 0755, true);
+            file_put_contents($configFile, json_encode($config, JSON_PRETTY_PRINT));
+            
+            // Also update LNBits config
+            if ($config['lnbits_url'] && $config['lnbits_api_key']) {
+                $lnbitsFile = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/lnbits_config.json';
+                file_put_contents($lnbitsFile, json_encode([
+                    'url' => $config['lnbits_url'],
+                    'api_key' => $config['lnbits_api_key'],
+                    'sandbox' => $config['sandbox'],
+                ]));
+            }
+            
+            echo json_encode(['success' => true, 'message' => 'Payment config updated']);
+            break;
+
+        // === AUCTION TIME REMAINING ===
+        case 'auction_time':
+            $id = $_GET['id'] ?? '';
+            $stmt = $db->prepare('SELECT ends_at, status, current_price_sats, starting_price_sats FROM auctions WHERE id = ?');
+            $stmt->execute([$id]);
+            $auction = $stmt->fetch();
+            
+            if (!$auction) throw new Exception('Auction not found', 404);
+            
+            $endsAt = strtotime($auction['ends_at']);
+            $now = time();
+            $remaining = max(0, $endsAt - $now);
+            
+            echo json_encode([
+                'auction_id' => $id,
+                'status' => $remaining > 0 ? 'active' : 'ended',
+                'ends_at' => $auction['ends_at'],
+                'remaining_seconds' => $remaining,
+                'remaining_formatted' => gmdate('H:i:s', $remaining),
+                'current_price_sats' => $auction['current_price_sats'],
+                'starting_price_sats' => $auction['starting_price_sats'],
+            ]);
+            break;
+
         // === TOGGLE COLLECTION ===
         case 'toggle_collection':
             $user = requireAuth();
@@ -588,8 +644,26 @@ try {
             
             $description = "Toxic Market: {$listing['title']} - " . formatSats($totalSats);
             
+            // Route by payment method
+            $paymentMethod = $data['payment_method'] ?? 'lightning';
             $ln = new LightningPayments();
-            $invoice = $ln->createInvoice($totalSats, $description, $listingId);
+            
+            switch ($paymentMethod) {
+                case 'lightning':
+                    $invoice = $ln->createInvoice($totalSats, $description, $listingId);
+                    break;
+                    
+                case 'onchain':
+                    $invoice = $ln->createOnchainInvoice($totalSats, $description, $listingId);
+                    break;
+                    
+                case 'manual':
+                    $invoice = $ln->createManualInvoice($totalSats, $description, $listingId);
+                    break;
+                    
+                default:
+                    throw new Exception('Unsupported payment method: ' . $paymentMethod, 400);
+            }
             
             // Create transaction record
             $txId = bin2hex(random_bytes(16));
