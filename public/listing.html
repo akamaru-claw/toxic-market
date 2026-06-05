@@ -91,7 +91,7 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                 <span class="card-gen gen-<?= $listing['generation'] ?>" style="margin-bottom:8px;"><?= $gen ?></span>
                 <h1 style="font-size:1.6rem;font-weight:800;margin:8px 0;"><?= htmlspecialchars($listing['title']) ?></h1>
                 
-                <div style="font-size:2.2rem;font-weight:900;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;margin:16px 0;">
+                <div style="font-size:2.2rem;font-weight:900;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;margin:16px 0;word-break:break-word;">
                     ₿ <?= number_format($listing['price_sats']) ?>
                 </div>
 
@@ -106,15 +106,10 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                     <?php endif; ?>
                 </div>
 
-                <!-- Shipping -->
-                <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0;">
-                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text);">🚚 Versand</div>
-                    <?php if ($listing['local_shipping_sats'] == 0 && $listing['intl_shipping_sats'] == 0): ?>
-                    <div style="color:var(--accent);font-weight:600;">Kostenloser Versand</div>
-                    <?php else: ?>
-                    <div style="font-size:13px;color:var(--text-muted);">🇩🇪 Deutschland: <?= $listing['local_shipping_sats'] > 0 ? number_format($listing['local_shipping_sats']).' sats' : 'Kostenlos' ?></div>
-                    <div style="font-size:13px;color:var(--text-muted);">🌍 International: <?= $listing['intl_shipping_sats'] > 0 ? number_format($listing['intl_shipping_sats']).' sats' : 'Kostenlos' ?></div>
-                    <?php endif; ?>
+                <!-- P2P Note -->
+                <div style="background:rgba(247,147,26,0.06);border:1px solid rgba(247,147,26,0.2);border-radius:12px;padding:16px;margin:16px 0;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text);">📌 Versand & Abholung</div>
+                    <p style="font-size:13px;color:var(--text-muted);line-height:1.6;">Versand wird direkt zwischen Käufer und Verkäufer vereinbart. Toxic Market vermittelt nur.</p>
                 </div>
 
                 <!-- Description -->
@@ -149,32 +144,12 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                         <span>Kartenpreis</span>
                         <span style="font-family:'JetBrains Mono',monospace;color:var(--text);"><?= number_format($listing['price_sats']) ?> sats</span>
                     </div>
-                    <?php if ($listing['local_shipping_sats'] > 0 || $listing['intl_shipping_sats'] > 0): ?>
-                    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--text-muted);margin-bottom:8px;">
-                        <span>Versand (DE)</span>
-                        <span style="font-family:'JetBrains Mono',monospace;color:var(--text);"><?= $listing['local_shipping_sats'] > 0 ? number_format($listing['local_shipping_sats']).' sats' : ' Kostenlos' ?></span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--text-muted);margin-bottom:8px;">
-                        <span>Versand (Intl)</span>
-                        <span style="font-family:'JetBrains Mono',monospace;color:var(--text);"><?= $listing['intl_shipping_sats'] > 0 ? number_format($listing['intl_shipping_sats']).' sats' : ' Kostenlos' ?></span>
-                    </div>
-                    <?php endif; ?>
                     <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
                     <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;">
-                        <span>Gesamt</span>
+                        <span>Preis</span>
                         <span style="font-family:'JetBrains Mono',monospace;color:var(--bitcoin);" id="total-price"><?= number_format($listing['price_sats']) ?> sats</span>
                     </div>
                     <div style="text-align:right;font-size:12px;color:var(--text-dim);margin-top:4px;" id="price-eur"></div>
-                </div>
-
-                <!-- Shipping Region -->
-                <div class="form-group" style="margin-top:16px;">
-                    <label>Versand nach</label>
-                    <select id="shipping-region" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;" onchange="updateTotal()">
-                        <option value="none">Abholung / Kein Versand</option>
-                        <option value="de" <?= ($listing['local_shipping_sats'] == 0) ? 'selected' : '' ?>>Deutschland</option>
-                        <option value="intl">International</option>
-                    </select>
                 </div>
 
                 <!-- Contact Seller -->
@@ -221,8 +196,6 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
     <script src="/toxic-market/js/toxic.js"></script>
     <script>
     const PRICE_SATS = <?= $listing['price_sats'] ?>;
-    const LOCAL_SHIP = <?= $listing['local_shipping_sats'] ?? 0 ?>;
-    const INTL_SHIP = <?= $listing['intl_shipping_sats'] ?? 0 ?>;
     const LISTING_ID = '<?= $listing['id'] ?>';
     const LOGGED_IN = <?= isLoggedIn() ? 'true' : 'false' ?>;
 
@@ -237,21 +210,6 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
             }
         } catch(e) {}
     })();
-
-    function updateTotal() {
-        const region = document.getElementById('shipping-region').value;
-        let total = PRICE_SATS;
-        if (region === 'de') total += LOCAL_SHIP;
-        if (region === 'intl') total += INTL_SHIP;
-        document.getElementById('total-price').textContent = total.toLocaleString() + ' sats';
-        document.getElementById('buy-btn').innerHTML = `⚡ Kaufen für ${total.toLocaleString()} Sats`;
-    }
-
-    // Init shipping default
-    <?php if ($listing['local_shipping_sats'] == 0): ?>
-    // Free shipping in DE by default
-    <?php endif; ?>
-    updateTotal();
 
     function contactSeller() {
         const sellerName = '<?= htmlspecialchars($listing['seller_name'], ENT_QUOTES) ?>';

@@ -39,6 +39,10 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Prevent any content from breaking layout */
+body, html { overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word; }
+* { min-width: 0; } /* Flex children can shrink below content size */
+
 body {
     background: var(--bg);
     color: var(--text);
@@ -467,11 +471,29 @@ footer strong { color: var(--bitcoin); }
     .disclaimer-banner { font-size: 11px; }
     .proof-steps li { padding: 8px 0 8px 24px; font-size: 12px; }
     img.card-img, .card-img { width: 100% !important; max-width: 100% !important; height: auto !important; aspect-ratio: 3/4; object-fit: cover; }
+    .card-detail-image { font-size: 48px !important; }
+    .listing-price { font-size: 1.2rem !important; }
+    #auction-price-display { font-size: 1.8rem !important; }
+}
+
+@media (max-width: 640px) {
+    .card-detail-grid { grid-template-columns: 1fr !important; }
 }
 
 /* Prevent horizontal scroll on any device */
-img, svg, video, iframe, table, pre { max-width: 100%; height: auto; }
+img, svg, video, iframe, table, pre { max-width: 100%; height: auto; overflow-wrap: break-word; word-break: break-word; }
 * { box-sizing: border-box; }
+
+/* Prevent long text from overflowing */
+.proof-hash-box, .modal-content, .listing-title, .card-name, .card-info, .form-group input, .form-group textarea, .listing-item, .auction-item, p, h1, h2, h3, h4, h5, h6, span, a, td, th, li, div { overflow-wrap: break-word; word-break: break-word; }
+
+/* Specific overflow fixes */
+.card-item { max-width: 100%; }
+.listing-item { max-width: 100%; overflow: hidden; }
+.auction-item { max-width: 100%; overflow: hidden; }
+.auth-divider span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-inner { max-width: 100%; overflow: hidden; }
+.hero-stats { overflow: hidden; }
 /* Card detail listings & auctions */
 .card-listings, .card-auctions { margin-top: 16px; }
 .card-listings h4, .card-auctions h4 { color: var(--accent); margin-bottom: 8px; font-size: 0.9rem; }
