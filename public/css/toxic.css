@@ -418,7 +418,8 @@ footer strong { color: var(--bitcoin); }
 }
 
 @media (max-width: 480px) {
-    .container { padding: 0 16px; }
+    html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+    .container { padding: 0 16px; max-width: 100vw; overflow-x: hidden; }
     #hero h1 { font-size: 1.8rem; }
     .card-detail-grid { grid-template-columns: 1fr !important; }
     .nav-inner { padding: 12px 16px; }
@@ -426,6 +427,7 @@ footer strong { color: var(--bitcoin); }
     .nav-links .btn { padding: 4px 10px; font-size: 11px; }
     .generations { grid-template-columns: 1fr; }
     .set-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    .cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
     .filter-bar { flex-direction: column; }
     .filter-btn { width: 100%; text-align: center; }
     .search-input { width: 100%; min-width: unset; }
@@ -434,4 +436,9 @@ footer strong { color: var(--bitcoin); }
     .modal-content { width: 95%; padding: 24px 16px; }
     .disclaimer-banner { font-size: 11px; }
     .proof-steps li { padding: 8px 0 8px 24px; font-size: 12px; }
+    img.card-img, .card-img { width: 100% !important; max-width: 100% !important; height: auto !important; aspect-ratio: 3/4; object-fit: cover; }
 }
+
+/* Prevent horizontal scroll on any device */
+img, svg, video, iframe, table, pre { max-width: 100%; height: auto; }
+* { box-sizing: border-box; }
