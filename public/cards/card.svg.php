@@ -20,14 +20,24 @@ $colors = [
 ];
 $c = $colors[$gen] ?? $colors[1];
 
-// Holo effect
-$holoFilter = $holo ? 'filter="url(#holo)"' : '';
-$holoBorder = $holo ? 'stroke="url(#holoGrad)" stroke-width="3"' : 'stroke="' . $c['accent'] . '" stroke-width="1.5"';
-$holoBadge = $holo ? '<text x="140" y="185" text-anchor="middle" fill="url(#holoGrad)" font-family="monospace" font-size="10" font-weight="700">✨ HOLO</text>' : '';
+// Holo positions from URL param
+$holo_positions_str = $_GET['holo_positions'] ?? '[]';
+$holo_positions = json_decode($holo_positions_str, true) ?: [];
 
 // Card number within generation (1-21)
 $cardNumber = (($id - 1) % 21) + 1;
 $total = $gen === 3 ? 35 : 210;
+
+// Build holo display text
+$holoDisplay = '';
+if (!empty($holo_positions)) {
+    $positions = implode(', ', $holo_positions);
+    $holoDisplay = "<text x='140' y='185' text-anchor='middle' fill='url(#holoGrad)' font-family='monospace' font-size='9' font-weight='700'>Holo: {$positions}/{$total}</text>";
+}
+
+// Holo effect
+$holoFilter = $holo ? 'filter=\"url(#holo)\"' : '';
+$holoBorder = $holo ? 'stroke=\"url(#holoGrad)\" stroke-width=\"3\"' : 'stroke=\"' . $c['accent'] . '\" stroke-width=\"1.5\"';
 
 echo <<<SVG
 <svg xmlns="http://www.w3.org/2000/svg" width="280" height="380" viewBox="0 0 280 380">
@@ -95,7 +105,7 @@ echo <<<SVG
   <!-- Edition info -->
   <text x="140" y="298" text-anchor="middle" fill="#7878a8" font-family="monospace" font-size="10">{$total} Edition · #{$cardNumber}</text>
 
-  {$holoBadge}
+  {$holoDisplay}
 
   <!-- Bottom accent line -->
   <rect x="20" y="348" width="240" height="1" fill="url(#accentGrad)" opacity="0.6"/>

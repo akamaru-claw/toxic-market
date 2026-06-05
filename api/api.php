@@ -123,7 +123,8 @@ try {
                 $card['card_number'] = (($card['id'] - 1) % 21) + 1;
                 if (empty($card['image_url'])) {
                     $holo = in_array($card['card_number'], $card['holo_positions'] ?? []) ? '1' : '0';
-                    $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . $holo;
+                    $holoPos = urlencode(json_encode($card['holo_positions'] ?? []));
+                    $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . $holo . '&holo_positions=' . $holoPos;
                 }
             }
             
@@ -143,7 +144,8 @@ try {
             // Add dynamic image URL
             if (empty($card['image_url'])) {
                 $holo = in_array($card['card_number'], $card['holo_positions'] ?? []) ? '1' : '0';
-                $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . $holo;
+                $holoPos = urlencode(json_encode($card['holo_positions'] ?? []));
+                $card['image_url'] = '/toxic-market/cards/card.svg.php?id=' . $card['id'] . '&gen=' . $card['generation'] . '&name=' . urlencode($card['name']) . '&holo=' . $holo . '&holo_positions=' . $holoPos;
             }
             
             // Get variants
