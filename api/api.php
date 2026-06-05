@@ -290,6 +290,9 @@ try {
 
         // === AUCTION TIME REMAINING ===
         case 'auction_time':
+            // Also auto-end expired auctions on every time check
+            autoEndExpiredAuctions($db);
+            
             $id = $_GET['id'] ?? '';
             $stmt = $db->prepare('SELECT ends_at, status, current_price_sats, starting_price_sats FROM auctions WHERE id = ?');
             $stmt->execute([$id]);
