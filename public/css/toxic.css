@@ -452,3 +452,28 @@ img, svg, video, iframe, table, pre { max-width: 100%; height: auto; }
 .card-img-main { width: 100%; height: auto; border-radius: var(--radius-sm); }
 .badge-success { background: var(--accent); color: var(--bg); }
 
+
+/* Auction detail & bidding */
+.auction-detail { padding: 8px 0; }
+.auction-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.auction-id { color: var(--text2); font-family: monospace; font-size: 0.8rem; }
+.badge-active { background: var(--accent); color: var(--bg); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
+.badge-ended { background: var(--danger); color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
+.auction-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.info-item { background: var(--bg2); padding: 10px; border-radius: var(--radius-sm); }
+.info-label { display: block; color: var(--text2); font-size: 0.75rem; margin-bottom: 4px; }
+.info-value { display: block; font-size: 1rem; font-weight: 600; }
+.info-value.highlight { color: var(--accent); }
+.info-value.ended { color: var(--danger); }
+.auction-desc { color: var(--text2); font-size: 0.9rem; margin: 12px 0; line-height: 1.4; }
+
+/* Bid section */
+.bid-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.bid-section h4 { color: var(--accent); margin-bottom: 12px; }
+.bid-input-group { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.bid-input { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: var(--radius-sm); font-size: 1rem; width: 100%; }
+.bid-input:focus { border-color: var(--accent); outline: none; }
+.bid-sats { color: var(--text2); font-family: monospace; font-size: 0.85rem; white-space: nowrap; }
+.bid-hint { color: var(--text2); font-size: 0.8rem; margin-bottom: 12px; }
+.btn-bid { width: 100%; padding: 12px; font-size: 1rem; margin-top: 4px; }
+.auction-own-note { color: var(--accent); font-size: 0.85rem; text-align: center; padding: 12px; background: var(--bg2); border-radius: var(--radius-sm); }
