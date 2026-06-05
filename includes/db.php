@@ -15,6 +15,20 @@ function getDB(): PDO {
         $db->exec('PRAGMA journal_mode=WAL');
         $db->exec('PRAGMA foreign_keys=ON');
     }
+    // Schema migrations (add columns to existing tables if missing)
+    $migrations = [
+        'ALTER TABLE listings ADD COLUMN generation INTEGER DEFAULT 1',
+        'ALTER TABLE auctions ADD COLUMN generation INTEGER DEFAULT 1',
+        'ALTER TABLE users ADD COLUMN nostr_pubkey TEXT',
+        'ALTER TABLE users ADD COLUMN bio TEXT',
+        'ALTER TABLE users ADD COLUMN avatar_url TEXT',
+        'ALTER TABLE users ADD COLUMN total_sales INTEGER DEFAULT 0',
+        'ALTER TABLE users ADD COLUMN total_purchases INTEGER DEFAULT 0',
+    ];
+    foreach ($migrations as $sql) {
+        try { $db->exec($sql); } catch (Exception $e) { /* Column already exists, ignore */ }
+    }
+
     return $db;
 }
 
