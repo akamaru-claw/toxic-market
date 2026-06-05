@@ -123,6 +123,8 @@ class LightningPayments {
             'instructions' => "Sende {$amountSats} sats an: {$address}",
         ];
     }
+    /**
+     * Check if a payment has been settled
      */
     public function checkPayment(string $paymentHash): array {
         if (!$this->isAvailable()) {
