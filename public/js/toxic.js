@@ -229,6 +229,24 @@ function renderCards() {
     if (search) {
         filtered = filtered.filter(c => c.name.toLowerCase().includes(search) || c.description.toLowerCase().includes(search));
     }
+    // Price filter (based on lowest_price from API)
+    const priceFilter = document.getElementById('price-filter')?.value || 'all';
+    if (priceFilter !== 'all') {
+        filtered = filtered.filter(c => {
+            const price = c.lowest_price || 0;
+            if (priceFilter === '0-1000') return price > 0 && price <= 1000;
+            if (priceFilter === '1000-5000') return price >= 1000 && price <= 5000;
+            if (priceFilter === '5000-20000') return price >= 5000 && price <= 20000;
+            if (priceFilter === '20000-50000') return price >= 20000 && price <= 50000;
+            if (priceFilter === '50000+') return price >= 50000;
+            return true;
+        });
+    }
+    // Sort
+    const sortFilter = document.getElementById('sort-filter')?.value || 'id';
+    if (sortFilter === 'name') filtered.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sortFilter === 'price-asc') filtered.sort((a, b) => (a.lowest_price || 999999) - (b.lowest_price || 999999));
+    else if (sortFilter === 'price-desc') filtered.sort((a, b) => (b.lowest_price || 0) - (a.lowest_price || 0));
 
     grid.innerHTML = filtered.map(card => {
         const genLabel = { 1: 'Genesis 2025', 2: 'Zitadelle 2026', 3: 'Remake EN' }[card.generation];
@@ -252,18 +270,25 @@ function renderCards() {
             </div>
         </div>`;
     }).join('');
+    
+    if (filtered.length === 0) {
+        grid.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:40px;grid-column:1/-1;">Keine Karten gefunden.</p>';
+    }
 }
 
 function setupFilters() {
-    document.querySelectorAll('.filter-btn').forEach(btn => {
+    document.querySelectorAll('.filter-btn[data-gen]').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.filter-btn[data-gen]').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.gen;
             renderCards();
         });
     });
     document.getElementById('card-search')?.addEventListener('input', renderCards);
+    document.getElementById('price-filter')?.addEventListener('change', renderCards);
+    document.getElementById('sort-filter')?.addEventListener('change', renderCards);
+    document.getElementById('filter-images')?.addEventListener('change', loadListings);
 }
 
 async function showCard(id) {
@@ -285,7 +310,10 @@ async function loadListings() {
         }
         grid.innerHTML = listings.map(l => {
             const images = JSON.parse(l.image_urls || '[]');
-            const imgUrl = images[0] || `/toxic-market/cards/card.svg.php?id=${l.card_template_id}&gen=${l.generation || 1}&name=${encodeURIComponent(l.card_name || l.title)}&holo=0`;
+            const hasImage = images && images.length > 0 && images[0];
+            const filterImages = document.getElementById('filter-images')?.checked;
+            if (filterImages && !hasImage) return ''; // Skip listings without images
+            const imgUrl = hasImage ? images[0] : `/toxic-market/cards/card.svg.php?id=${l.card_template_id}&gen=${l.generation || 1}&name=${encodeURIComponent(l.card_name || l.title)}&holo=0`;
             const genClass = `gen-${l.generation || 1}`;
             const genLabel = {1:'Genesis 2025',2:'Zitadelle 2026',3:'Remake EN'}[l.generation] || '';
             return `

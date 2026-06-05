@@ -17,6 +17,7 @@
     <meta name="twitter:description" content="Bitcoin-Marktplatz für Toxic Booster Karten">
     <meta name="twitter:image" content="https://ml-bets.com/toxic-market/cards/card.svg.php?id=1&gen=1&name=Toxic%20Market&holo=0">
     <link rel="icon" href="/toxic-market/favicon.svg" type="image/svg+xml">
+    <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
     <link href="/toxic-market/css/toxic.css" rel="stylesheet">
 </head>
 <body>
@@ -93,6 +94,20 @@
                 <button class="filter-btn" data-gen="2">Zitadelle 2026</button>
                 <button class="filter-btn" data-gen="3">Remake (EN)</button>
                 <input type="search" id="card-search" placeholder="Suchen..." class="search-input">
+                <select id="price-filter" class="filter-btn" style="cursor:pointer;">
+                    <option value="all">Beliebiger Preis</option>
+                    <option value="0-1000">0 – 1.000 sats</option>
+                    <option value="1000-5000">1.000 – 5.000 sats</option>
+                    <option value="5000-20000">5.000 – 20.000 sats</option>
+                    <option value="20000-50000">20.000 – 50.000 sats</option>
+                    <option value="50000+">50.000+ sats</option>
+                </select>
+                <select id="sort-filter" class="filter-btn" style="cursor:pointer;">
+                    <option value="id">Sortierung: ID</option>
+                    <option value="name">Name A-Z</option>
+                    <option value="price-asc">Preis ↑</option>
+                    <option value="price-desc">Preis ↓</option>
+                </select>
             </div>
             <div id="cards-grid" class="cards-grid">
                 <!-- Filled by JS -->
@@ -105,7 +120,12 @@
         <div class="container">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
                 <h2 style="margin:0;">🏷️ Kaufen</h2>
-                <a href="/toxic-market/create" class="btn btn-primary btn-sm" id="create-listing-btn-2" style="display:none;">+ Angebot erstellen</a>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;cursor:pointer;">
+                        <input type="checkbox" id="filter-images" style="accent-color:var(--accent);"> Nur mit Bild
+                    </label>
+                    <a href="/toxic-market/create" class="btn btn-primary btn-sm" id="create-listing-btn-2" style="display:none;">+ Angebot erstellen</a>
+                </div>
             </div>
             <div id="listings-grid" class="listings-grid">
                 <p class="empty">Noch keine Angebote. <a href="#" onclick="showCreateListing()">Erstelle das Erste!</a></p>
