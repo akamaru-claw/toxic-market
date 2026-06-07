@@ -279,12 +279,13 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             
             $id = bin2hex(random_bytes(16));
-            $stmt = $db->prepare('INSERT INTO listings (id, seller_id, card_template_id, title, description, price_sats, condition_text, serial_number, image_urls, local_shipping_sats, intl_shipping_sats) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt = $db->prepare('INSERT INTO listings (id, seller_id, card_template_id, title, description, price_sats, condition_text, serial_number, image_urls, proof_image_url, proof_block_height, local_shipping_sats, intl_shipping_sats) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             $stmt->execute([
                 $id, $user['id'], $data['card_template_id'] ?? null,
                 $data['title'], $data['description'] ?? '', $data['price_sats'],
                 $data['condition'] ?? 'mint', $data['serial_number'] ?? '',
                 json_encode($data['image_urls'] ?? []),
+                $data['proof_image_url'] ?? '', $data['proof_block_height'] ?? 0,
                 $data['local_shipping_sats'] ?? 0, $data['intl_shipping_sats'] ?? 0
             ]);
             
@@ -415,13 +416,14 @@ try {
             $startsAt = $data['starts_at'] ?? date('Y-m-d H:i:s');
             $endsAt = date('Y-m-d H:i:s', strtotime($startsAt . " +{$duration} hours"));
             
-            $stmt = $db->prepare('INSERT INTO auctions (id, seller_id, card_template_id, title, description, starting_price_sats, current_price_sats, serial_number, image_urls, condition_text, local_shipping_sats, intl_shipping_sats, starts_at, ends_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt = $db->prepare('INSERT INTO auctions (id, seller_id, card_template_id, title, description, starting_price_sats, current_price_sats, serial_number, image_urls, proof_image_url, proof_block_height, condition_text, local_shipping_sats, intl_shipping_sats, starts_at, ends_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             $stmt->execute([
                 $id, $user['id'], $data['card_template_id'] ?? null,
                 $data['title'], $data['description'] ?? '',
                 $startingPrice, $startingPrice,
                 $data['serial_number'] ?? '',
                 json_encode($data['image_urls'] ?? []),
+                $data['proof_image_url'] ?? '', $data['proof_block_height'] ?? 0,
                 $data['condition'] ?? 'mint',
                 $data['local_shipping_sats'] ?? 0, $data['intl_shipping_sats'] ?? 0,
                 $startsAt, $endsAt, 'active'
@@ -631,6 +633,50 @@ try {
             if (!$stmt->fetch()) throw new Exception('Listing not found or not yours', 404);
             
             $db->prepare('DELETE FROM listings WHERE id = ?')->execute([$id]);
+            echo json_encode(['success' => true]);
+            break;
+
+        // === DELETE AUCTION ===
+        case 'delete_auction':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? '';
+            
+            $stmt = $db->prepare('SELECT * FROM auctions WHERE id = ? AND seller_id = ?');
+            $stmt->execute([$id, $user['id']]);
+            $auction = $stmt->fetch();
+            if (!$auction) throw new Exception('Auction not found or not yours', 404);
+            
+            // Only allow delete if no bids yet or status is ended
+            $stmt2 = $db->prepare('SELECT COUNT(*) as c FROM bids WHERE auction_id = ?');
+            $stmt2->execute([$id]);
+            $bids = $stmt2->fetch()['c'];
+            if ($bids > 0 && $auction['status'] === 'active') {
+                throw new Exception('Cannot delete active auction with bids. End it instead.', 400);
+            }
+            
+            $db->prepare('DELETE FROM bids WHERE auction_id = ?')->execute([$id]);
+            $db->prepare('DELETE FROM auctions WHERE id = ?')->execute([$id]);
+            
+            echo json_encode(['success' => true]);
+            break;
+            
+        // === END AUCTION EARLY ===
+        case 'end_auction':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $id = $data['id'] ?? '';
+            
+            $stmt = $db->prepare('SELECT * FROM auctions WHERE id = ? AND seller_id = ? AND status = ?');
+            $stmt->execute([$id, $user['id'], 'active']);
+            $auction = $stmt->fetch();
+            if (!$auction) throw new Exception('Auction not found or already ended', 404);
+            
+            $db->prepare('UPDATE auctions SET ends_at = datetime("now"), status = "ended" WHERE id = ?')->execute([$id]);
+            autoEndExpiredAuctions($db); // to process winner
+            
             echo json_encode(['success' => true]);
             break;
 
