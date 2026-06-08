@@ -202,6 +202,17 @@ function initDB(): void {
         )');
     } catch(Exception $e) {}
 
+    // Phase 5b: User collection table (for set builder)
+    try {
+        $db->exec('CREATE TABLE IF NOT EXISTS user_collection (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id),
+            card_template_id INTEGER REFERENCES card_templates(id),
+            acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, card_template_id)
+        )');
+    } catch(Exception $e) {}
+
     $db->exec('CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
