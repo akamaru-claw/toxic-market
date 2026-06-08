@@ -616,3 +616,16 @@ img, svg, video, iframe, table, pre { max-width: 100%; height: auto; overflow-wr
 .notif-type { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
 .notif-title { font-size: 13px; font-weight: 600; color: var(--text); margin: 2px 0; }
 .notif-time { font-size: 11px; color: var(--text-dim); }
+
+/* ─── Mobile Notification Fixes ─── */
+@media (max-width: 480px) {
+    .notif-dropdown { width: 280px; right: -40px; }
+    #bid-section input[type="number"] { width: 100%; }
+    #bid-section { display: flex; flex-direction: column; gap: 8px; }
+    #bid-section .btn { width: 100%; }
+    .modal-content { max-height: 90vh; overflow-y: auto; }
+}
+
+/* ─── Toast Improvements ─── */
+#toast-container { z-index: 99999; }
+.toast { min-width: 200px; max-width: 90vw; }
