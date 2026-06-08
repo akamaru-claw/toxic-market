@@ -951,6 +951,172 @@ try {
             echo json_encode(['data' => $listings]);
             break;
 
+        // === NOTIFICATIONS ===
+        case 'notifications':
+            $user = requireAuth();
+            $limit = min(50, max(1, intval($_GET['limit'] ?? 20)));
+            $unreadOnly = isset($_GET['unread_only']) && $_GET['unread_only'] === '1';
+            
+            $sql = 'SELECT * FROM notifications WHERE user_id = ?';
+            $params = [$user['id']];
+            if ($unreadOnly) {
+                $sql .= ' AND is_read = 0';
+            }
+            $sql .= ' ORDER BY created_at DESC LIMIT ?';
+            $params[] = $limit;
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $notifications = $stmt->fetchAll();
+            
+            // Count unread
+            $stmt2 = $db->prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0');
+            $stmt2->execute([$user['id']]);
+            $unreadCount = $stmt2->fetch()['count'];
+            
+            echo json_encode(['data' => $notifications, 'unread_count' => $unreadCount]);
+            break;
+
+        // === MARK NOTIFICATIONS READ ===
+        case 'mark_notifications_read':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $notificationId = $data['id'] ?? null;
+            
+            if ($notificationId) {
+                $db->prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?')
+                    ->execute([$notificationId, $user['id']]);
+            } else {
+                markNotificationsRead($db, $user['id']);
+            }
+            echo json_encode(['success' => true]);
+            break;
+
+        // === CREATE PURCHASE INVOICE ===
+        case 'create_purchase_invoice':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $listingId = $data['listing_id'] ?? '';
+            
+            if (!$listingId) throw new Exception('Listing ID required', 400);
+            
+            $result = createPurchaseInvoice($db, $listingId, $user['id']);
+            if (!$result) throw new Exception('Could not create invoice. Check listing and try again.', 400);
+            
+            $result['success'] = true;
+            if (isset($result['payment_request']) && $result['payment_request']) {
+                $result['qr_url'] = getQRCodeUrl('lightning:' . $result['payment_request']);
+            }
+            echo json_encode($result);
+            break;
+
+        // === BID WITH DEPOSIT ===
+        case 'bid_with_deposit':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $auctionId = $data['auction_id'] ?? '';
+            $bidAmount = intval($data['amount_sats'] ?? 0);
+            
+            if (!$auctionId || $bidAmount <= 0) throw new Exception('Auction ID and amount required', 400);
+            
+            // Verify minimum bid
+            $stmt = $db->prepare('SELECT a.*, ct.name as card_name FROM auctions a JOIN card_templates ct ON a.card_template_id = ct.id WHERE a.id = ? AND a.status = ?');
+            $stmt->execute([$auctionId, 'active']);
+            $auction = $stmt->fetch();
+            if (!$auction) throw new Exception('Auction not found or not active', 404);
+            if ($auction['seller_id'] == $user['id']) throw new Exception('Cannot bid on own auction', 400);
+            
+            $currentPrice = $auction['current_price_sats'] ?? $auction['starting_price_sats'];
+            $minBid = $currentPrice + 500;
+            if ($bidAmount < $minBid) throw new Exception("Minimum bid is {$minBid} sats", 400);
+            
+            // Check auction hasn't ended
+            $ends = new DateTime($auction['ends_at']);
+            if ($ends < new DateTime()) throw new Exception('Auction has ended', 400);
+            
+            $result = createBidDepositInvoice($db, $auctionId, $user['id'], $bidAmount);
+            if (!$result) throw new Exception('Could not create bid deposit', 400);
+            
+            $result['success'] = true;
+            $result['min_bid'] = $minBid;
+            $result['auction_title'] = $auction['title'];
+            if (isset($result['payment_request']) && $result['payment_request']) {
+                $result['qr_url'] = getQRCodeUrl('lightning:' . $result['payment_request']);
+            }
+            echo json_encode($result);
+            break;
+
+        // === CHECK BID DEPOSIT ===
+        case 'check_bid_deposit':
+            $user = requireAuth();
+            $bidId = $_GET['bid_id'] ?? '';
+            if (!$bidId) throw new Exception('Bid ID required', 400);
+            
+            $stmt = $db->prepare('SELECT b.*, t.status as tx_status, t.payment_hash FROM bids b LEFT JOIN transactions t ON t.auction_id = b.auction_id AND t.payer_id = b.bidder_id AND t.type = ? WHERE b.id = ?');
+            $stmt->execute(['bid_deposit', $bidId]);
+            $bid = $stmt->fetch();
+            if (!$bid) throw new Exception('Bid not found', 404);
+            if ($bid['bidder_id'] != $user['id']) throw new Exception('Not your bid', 403);
+            
+            $depositPaid = (bool)$bid['deposit_paid'];
+            
+            // Check LNBits if we have a payment hash
+            if (!$depositPaid && !empty($bid['deposit_payment_hash'])) {
+                $check = checkLNBitsPayment($bid['deposit_payment_hash']);
+                if ($check['paid']) {
+                    $db->prepare('UPDATE bids SET deposit_paid = 1 WHERE id = ?')->execute([$bidId]);
+                    $depositPaid = true;
+                }
+            }
+            
+            echo json_encode(['success' => true, 'bid_id' => $bidId, 'deposit_paid' => $depositPaid, 'amount_sats' => $bid['amount_sats']]);
+            break;
+
+        // === PAYMENT CONFIG (Admin) ===
+        case 'payment_config':
+            $user = requireAuth();
+            if ($method === 'GET') {
+                $config = getPaymentConfig();
+                // Don't expose full API key to frontend
+                $safe = [
+                    'lnbits_url' => $config['lnbits_url'] ?? '',
+                    'lnbits_api_key_set' => !empty($config['lnbits_api_key']),
+                    'onchain_address' => $config['onchain_address'] ?? '',
+                    'sandbox' => $config['sandbox'] ?? true,
+                ];
+                echo json_encode(['success' => true, 'config' => $safe]);
+            } elseif ($method === 'POST') {
+                // Save payment config
+                $data = json_decode(file_get_contents('php://input'), true);
+                $configDir = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data';
+                if (!is_dir($configDir)) mkdir($configDir, 0755, true);
+                
+                $existing = getPaymentConfig();
+                $config = [
+                    'lnbits_url' => $data['lnbits_url'] ?? $existing['lnbits_url'] ?? '',
+                    'lnbits_api_key' => $data['lnbits_api_key'] ?? $existing['lnbits_api_key'] ?? '',
+                    'onchain_address' => $data['onchain_address'] ?? $existing['onchain_address'] ?? '',
+                    'sandbox' => $data['sandbox'] ?? $existing['sandbox'] ?? true,
+                ];
+                
+                file_put_contents($configDir . '/payments_config.json', json_encode($config, JSON_PRETTY_PRINT));
+                
+                // Also save LNBits config separately for payments.php compatibility
+                if (!empty($config['lnbits_url']) && !empty($config['lnbits_api_key'])) {
+                    $lnbitsConfig = [
+                        'url' => $config['lnbits_url'],
+                        'api_key' => $config['lnbits_api_key'],
+                    ];
+                    file_put_contents($configDir . '/lnbits_config.json', json_encode($lnbitsConfig, JSON_PRETTY_PRINT));
+                }
+                
+                echo json_encode(['success' => true, 'message' => 'Zahlungskonfiguration gespeichert']);
+            }
+            break;
+
         // === SERVE IMAGE (secure proxy) ===
         case 'serve_image':
             $filename = $_GET['file'] ?? '';
