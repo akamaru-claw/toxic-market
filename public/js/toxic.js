@@ -596,4 +596,30 @@ async function checkNotifications() {
 if (currentUser) {
     checkNotifications();
     setInterval(checkNotifications, 60000);
+    updateNotificationBadge();
+    setInterval(updateNotificationBadge, 30000);
+}
+
+// ─── Notification Badge in Nav ───
+async function updateNotificationBadge() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch('/toxic-market/api/api.php?action=notifications&unread_only=1&limit=1', { credentials: 'same-origin' });
+        const data = await res.json();
+        const count = data.data ? data.data.length : 0;
+        // Find dashboard link and add badge
+        const dashLinks = document.querySelectorAll('a[href*="/toxic-market/dashboard"]');
+        dashLinks.forEach(link => {
+            // Remove old badge
+            const oldBadge = link.querySelector('.notif-badge-dot');
+            if (oldBadge) oldBadge.remove();
+            if (count > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'notif-badge-dot';
+                badge.style.cssText = 'position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:var(--danger);border-radius:50%;';
+                link.style.position = 'relative';
+                link.appendChild(badge);
+            }
+        });
+    } catch(e) {}
 }
