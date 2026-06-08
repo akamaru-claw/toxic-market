@@ -195,7 +195,7 @@ function getOnchainAddress(PDO $db): string {
 /**
  * Create a transaction record
  */
-function createTransaction(PDO $db, string $type, ?string $listingId, ?string $auctionId, int $payerId, int $payeeId, int $amountSats, string $paymentHash = '', string $paymentRequest = '')): string {
+function createTransaction(PDO $db, string $type, ?string $listingId, ?string $auctionId, int $payerId, int $payeeId, int $amountSats, string $paymentHash = '', string $paymentRequest = ''): string {
     $id = bin2hex(random_bytes(16));
     $stmt = $db->prepare('INSERT INTO transactions (id, type, listing_id, auction_id, payer_id, payee_id, amount_sats, payment_hash, payment_request, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $stmt->execute([$id, $type, $listingId, $auctionId, $payerId, $payeeId, $amountSats, $paymentHash, $paymentRequest, 'pending']);
