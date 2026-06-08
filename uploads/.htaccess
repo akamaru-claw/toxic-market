@@ -1,0 +1,6 @@
+# Allow image access but prevent script execution
+<FilesMatch "\.(php|phtml|php3|php4|php5|pht|phar|shtml|cgi|pl|py|rb|sh)$">
+    Deny from all
+</FilesMatch>
+
+Options -Indexes
