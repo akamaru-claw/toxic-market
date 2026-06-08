@@ -304,7 +304,7 @@ $rarityColors = [
                 $genLabel = [1=>'Genesis',2=>'Zitadelle',3=>'Remake'][$card['generation']] ?? '';
                 $genClass = "gen-{$card['generation']}";
             ?>
-            <div class="set-card <?= $isOwned ? 'owned' : 'missing' ?> <?= $isHolo ? 'holo' : ?> <?= !$isOwned ? 'missing' : '' ?>"
+            <div class="set-card <?= $isOwned ? 'owned' : 'missing' ?> <?= $isHolo ? 'holo' : '' ?> <?= !$isOwned ? 'missing' : '' ?>"
                  data-id="<?= $card['id'] ?>" data-owned="<?= $isOwned ? '1' : '0' ?>" data-holo="<?= $isHolo ? '1' : '0' ?>" data-gen="<?= $card['generation'] ?>"
                  onclick="toggleCard(<?= $card['id'] ?>, this)">
                 <img src="<?= $imgUrl ?>" alt="<?= htmlspecialchars($card['name']) ?>" loading="lazy">
