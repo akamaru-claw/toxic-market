@@ -1,0 +1,416 @@
+<?php
+/**
+ * Toxic Market — My Dashboard (Listings, Purchases, Profile)
+ */
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
+
+if (!isLoggedIn()) { header('Location: /toxic-market/'); exit; }
+
+$db = getDB();
+$user = currentUser();
+
+// Get my listings
+$stmt = $db->prepare('SELECT l.*, ct.name as card_name, ct.generation
+    FROM listings l JOIN card_templates ct ON l.card_template_id = ct.id
+    WHERE l.seller_id = ? ORDER BY l.created_at DESC');
+$stmt->execute([$user['id']]);
+$myListings = $stmt->fetchAll();
+
+// Get my auctions
+$stmt2 = $db->prepare('SELECT a.*, ct.name as card_name, ct.generation,
+    (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id) as bid_count
+    FROM auctions a JOIN card_templates ct ON a.card_template_id = ct.id
+    WHERE a.seller_id = ? ORDER BY a.created_at DESC');
+$stmt2->execute([$user['id']]);
+$myAuctions = $stmt2->fetchAll();
+
+// Get my purchases
+$stmt3 = $db->prepare('SELECT t.*, l.title as listing_title, u.display_name as seller_name
+    FROM transactions t 
+    LEFT JOIN listings l ON t.listing_id = l.id
+    LEFT JOIN users u ON t.payee_id = u.id
+    WHERE t.payer_id = ? AND t.type = \'purchase\'
+    ORDER BY t.created_at DESC LIMIT 20');
+$stmt3->execute([$user['id']]);
+$myPurchases = $stmt3->fetchAll();
+
+// Get my sales
+$stmt4 = $db->prepare('SELECT l.*, ct.name as card_name, u.display_name as buyer_name
+    FROM listings l 
+    JOIN card_templates ct ON l.card_template_id = ct.id
+    LEFT JOIN users u ON l.buyer_id = u.id
+    WHERE l.seller_id = ? AND l.is_sold = 1
+    ORDER BY l.sold_at DESC LIMIT 20');
+$stmt4->execute([$user['id']]);
+$mySales = $stmt4->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mein Dashboard — Toxic Market</title>
+    <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
+    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+</head>
+<body>
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
+            <div class="nav-links">
+                <a href="/toxic-market/#cards" class="desktop-link">Karten</a>
+                <a href="/toxic-market/#listings" class="desktop-link">Kaufen</a>
+                <span class="desktop-link" style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars($user['display_name']) ?></span>
+                <button class="btn btn-sm" onclick="logout()">✕</button>
+                <button class="hamburger" onclick="toggleMobileNav()">☰</button>
+            </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav hidden">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <a href="/toxic-market/dashboard">📊 Dashboard</a>
+            <a href="#" onclick="logout();return false;">🚪 Abmelden</a>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width:900px; padding: 30px 20px 60px;">
+        <!-- Profile Header -->
+        <div style="background:var(--card-glass);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:32px;">
+            <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                <div style="width:64px;height:64px;border-radius:50%;background:var(--holo-gradient);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">👤</div>
+                <div style="flex:1;min-width:200px;">
+                    <h1 style="font-size:1.5rem;font-weight:800;margin:0;"><?= htmlspecialchars($user['display_name']) ?></h1>
+                    <p style="color:var(--text-muted);font-size:13px;margin:4px 0 0;"><?= htmlspecialchars($user['email']) ?> · Seit <?= date('M Y', strtotime($user['created_at'])) ?></p>
+                </div>
+                <div style="display:flex;gap:16px;text-align:center;">
+                    <div><div style="font-size:1.4rem;font-weight:800;color:var(--accent);"><?= count($myListings) ?></div><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;">Angebote</div></div>
+                    <div><div style="font-size:1.4rem;font-weight:800;color:var(--bitcoin);"><?= $user['total_sales'] ?? 0 ?></div><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;">Verkäufe</div></div>
+                    <div><div style="font-size:1.4rem;font-weight:800;color:var(--purple);"><?= count($myAuctions) ?></div><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;">Auktionen</div></div>
+                </div>
+            </div>
+            
+            <!-- Bio Edit -->
+            <div style="margin-top:16px;">
+                <input type="text" id="bio-input" value="<?= htmlspecialchars($user['bio'] ?? '') ?>" placeholder="Schreibe etwas über dich..." 
+                    style="width:100%;padding:10px 14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+                <button class="btn btn-sm" style="margin-top:8px;" onclick="saveBio()">Speichern</button>
+            </div>
+            
+            <!-- Nostr Keys -->
+            <?php if ($user['nostr_pubkey']): ?>
+            <div style="margin-top:16px;background:var(--bg);border:1px solid rgba(196,77,255,0.2);border-radius:10px;padding:14px;">
+                <div style="font-size:13px;color:var(--purple);font-weight:600;margin-bottom:8px;">🔑 Nostr-Identität</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);word-break:break-all;margin-bottom:8px;" id="npub-display">
+                    Lädt...
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="copyNpub()">📋 npub kopieren</button>
+                <div id="nsec-backup" style="margin-top:12px;display:none;">
+                    <div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:6px;">⚠️ Geheimer Schlüssel (nur einmal zeigen!)</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);word-break:break-all;background:var(--bg-elevated);padding:10px;border-radius:8px;border:1px solid rgba(255,68,85,0.3);" id="nsec-display"></div>
+                    <p style="font-size:11px;color:var(--text-dim);margin-top:6px;">Sichere diesen Schlüssel offline! Wer ihn hat, kann in deinem Namen posten.</p>
+                </div>
+                <button class="btn btn-sm" style="margin-top:8px;background:rgba(255,68,85,0.1);color:var(--danger);border:1px solid rgba(255,68,85,0.2);" onclick="showNsec()">👁️ nsec anzeigen</button>
+            </div>
+            <script>
+            // Display npub from stored pubkey
+            document.addEventListener('DOMContentLoaded', () => {
+                <?php if (!empty($user['nostr_pubkey'])): ?>
+                const pubkeyHex = '<?= htmlspecialchars($user['nostr_pubkey']) ?>';
+                const npubEl = document.getElementById('npub-display');
+                if (window.NostrTM && NostrTM.encodeNpub) {
+                    npubEl.textContent = NostrTM.encodeNpub(pubkeyHex);
+                } else {
+                    npubEl.textContent = pubkeyHex.substring(0, 16) + '...';
+                }
+                <?php endif; ?>
+            });
+            function copyNpub() {
+                const npubEl = document.getElementById('npub-display');
+                navigator.clipboard.writeText(npubEl.textContent).then(() => toast('npub kopiert!', 'success'));
+            }
+            function showNsec() {
+                if (window.NostrTM && NostrTM.hasNsec()) {
+                    const nsec = NostrTM.loadNsec();
+                    document.getElementById('nsec-display').textContent = nsec;
+                    document.getElementById('nsec-backup').style.display = 'block';
+                } else {
+                    toast('Kein nsec im Browser gespeichert. Hast du eine Nostr-Extension?', 'warning');
+                }
+            }
+            </script>
+            <?php endif; ?>
+        </div>
+
+        <!-- Quick Actions -->
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px;">
+            <a href="/toxic-market/create" class="btn btn-primary">🏷️ Angebot erstellen</a>
+            <a href="/toxic-market/create-auction" class="btn btn-outline">🔨 Auktion starten</a>
+        </div>
+
+        <!-- My Listings -->
+        <div style="margin-bottom:40px;">
+            <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:16px;">🏷️ Meine Angebote</h2>
+            <?php if (empty($myListings)): ?>
+            <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;">
+                <p style="color:var(--text-muted);">Du hast noch keine Angebote.</p>
+                <a href="/toxic-market/create" class="btn btn-primary" style="margin-top:12px;">Erstes Angebot erstellen</a>
+            </div>
+            <?php else: ?>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <?php foreach ($myListings as $l): 
+                    $genLabel = [1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'][$l['generation']] ?? '';
+                    $images = json_decode($l['image_urls'], true) ?: [];
+                    $imgUrl = !empty($images) ? $images[0] : "/toxic-market/cards/card.svg.php?id={$l['card_template_id']}&gen={$l['generation']}&name=" . urlencode($l['card_name']) . "&holo=0";
+                ?>
+                <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;gap:14px;align-items:center;">
+                    <div style="width:60px;height:80px;border-radius:8px;overflow:hidden;flex-shrink:0;">
+                        <img src="<?= htmlspecialchars($imgUrl) ?>" style="width:100%;height:100%;object-fit:contain;" alt="" loading="lazy">
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;"><?= htmlspecialchars($l['title']) ?></div>
+                        <div style="color:var(--bitcoin);font-weight:700;font-family:'JetBrains Mono',monospace;"><?= number_format($l['price_sats']) ?> sats</div>
+                        <div style="font-size:12px;color:var(--text-dim);"><?= $genLabel ?> · <?= $l['condition_text'] ?> · <?= $l['is_sold'] ? '✅ Verkauft' : '🟢 Aktiv' ?></div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <?php if (!$l['is_sold']): ?>
+                        <a href="/toxic-market/listing/<?= $l['id'] ?>" class="btn btn-sm btn-outline">Ansehen</a>
+                        <button class="btn btn-sm" style="background:rgba(255,68,85,0.15);color:var(--danger);border:1px solid rgba(255,68,85,0.3);" onclick="deleteListing('<?= $l['id'] ?>', this)">🗑️</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- My Auctions -->
+        <div style="margin-bottom:40px;">
+            <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:16px;">🔨 Meine Auktionen</h2>
+            <?php if (empty($myAuctions)): ?>
+            <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;">
+                <p style="color:var(--text-muted);">Keine aktiven Auktionen.</p>
+                <a href="/toxic-market/create-auction" class="btn btn-outline" style="margin-top:12px;">Auktion starten</a>
+            </div>
+            <?php else: ?>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <?php foreach ($myAuctions as $a):
+                    $genLabel = [1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'][$a['generation']] ?? '';
+                    $ends = new DateTime($a['ends_at']);
+                    $isLive = ($ends > new DateTime() && $a['status'] === 'active');
+                    $currentPrice = $a['current_price_sats'] ?? $a['starting_price_sats'];
+                ?>
+                <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;gap:14px;align-items:center;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;">🔨 <?= htmlspecialchars($a['title']) ?></div>
+                        <div style="color:var(--bitcoin);font-weight:700;font-family:'JetBrains Mono',monospace;"><?= number_format($currentPrice) ?> sats</div>
+                        <div style="font-size:12px;color:var(--text-dim);"><?= $genLabel ?> · <?= $a['bid_count'] ?> Gebote · <?= $isLive ? '🟢 Aktiv' : '⏹ Beendet' ?></div>
+                    </div>
+                    <?php if ($isLive): ?>
+                    <a href="/toxic-market/auction/<?= $a['id'] ?>" class="btn btn-sm btn-outline">Ansehen</a>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- My Purchases -->
+        <div style="margin-bottom:40px;">
+            <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:16px;">🛒 Meine Käufe</h2>
+            <?php if (empty($myPurchases)): ?>
+            <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;">
+                <p style="color:var(--text-muted);">Noch keine Käufe.</p>
+            </div>
+            <?php else: ?>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <?php foreach ($myPurchases as $p): ?>
+                <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:16px;">
+                    <div style="font-weight:600;"><?= htmlspecialchars($p['listing_title'] ?? 'Unbekannt') ?></div>
+                    <div style="font-size:13px;color:var(--text-muted);">Von <?= htmlspecialchars($p['seller_name'] ?? 'Unbekannt') ?> · <?= number_format($p['amount_sats']) ?> sats · 
+                        <?php
+                        $statusLabels = ['pending' => '⏳ Ausstehend', 'settled' => '✅ Bestätigt', 'cancelled' => '❌ Storniert', 'manual' => '🤝 Manuell'];
+                        echo $statusLabels[$p['status']] ?? $p['status'];
+                        ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Transactions -->
+        <div style="margin-bottom:40px;">
+            <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:16px;">💸 Transaktionen</h2>
+            <div id="transactions-list" style="display:flex;flex-direction:column;gap:10px;">
+                <div style="text-align:center;padding:20px;color:var(--text-muted);">Laden...</div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div style="margin-bottom:40px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h2 style="font-size:1.3rem;font-weight:700;margin:0;">🔔 Benachrichtigungen</h2>
+                <button class="btn btn-sm btn-outline" onclick="markAllRead()">Alle gelesen</button>
+            </div>
+            <div id="notifications-list" style="display:flex;flex-direction:column;gap:10px;">
+                <div style="text-align:center;padding:20px;color:var(--text-muted);">Laden...</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>🧪 Toxic Market · <strong>Kein Custody, keine Haftung.</strong> P2P-Marktplatz.</p>
+        </div>
+    </footer>
+
+    <script src="/toxic-market/js/nostr.js"></script>
+    <script src="/toxic-market/js/toxic.js"></script>
+    <script>
+    async function saveBio() {
+        const bio = document.getElementById('bio-input').value;
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=update_profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ bio: bio })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast('Bio gespeichert!', 'success');
+            } else {
+                toast('Fehler: ' + (data.error || 'Unbekannt'), 'error');
+            }
+        } catch(e) {
+            toast('Server-Fehler', 'error');
+        }
+    }
+
+    async function deleteListing(id, btn) {
+        if (!confirm('Angebot wirklich löschen?')) return;
+        btn.disabled = true;
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=delete_listing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ id: id })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast('Angebot gelöscht', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                toast('Fehler: ' + (data.error || 'Unbekannt'), 'error');
+                btn.disabled = false;
+            }
+        } catch(e) {
+            toast('Server-Fehler', 'error');
+            btn.disabled = false;
+        }
+    }
+
+    // Load transactions
+    async function loadTransactions() {
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=my_transactions', { credentials: 'same-origin' });
+            const data = await res.json();
+            const list = document.getElementById('transactions-list');
+            if (!list) return;
+            
+            if (!data.data || data.data.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Noch keine Transaktionen.</div>';
+                return;
+            }
+            
+            const statusLabels = { pending: '⏳ Ausstehend', settled: '✅ Bestätigt', cancelled: '❌ Storniert', manual: '🤝 Manuell' };
+            const typeLabels = { purchase: '🛒 Kauf', bid_deposit: '🔨 Deposit', listing: '🏷️ Verkauf' };
+            
+            list.innerHTML = data.data.slice(0, 20).map(t => {
+                const status = statusLabels[t.status] || t.status;
+                const type = typeLabels[t.type] || t.type;
+                const date = new Date(t.created_at).toLocaleDateString('de-DE');
+                return `<div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-weight:600;font-size:14px;">${type}</div>
+                        <div style="font-size:12px;color:var(--text-dim);">${date}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--bitcoin);">${Number(t.amount_sats).toLocaleString()} sats</div>
+                        <div style="font-size:12px;">${status}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            console.error('Transactions error:', e);
+        }
+    }
+
+    // Load notifications
+    async function loadNotifications() {
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=notifications&limit=10', { credentials: 'same-origin' });
+            const data = await res.json();
+            const list = document.getElementById('notifications-list');
+            if (!list) return;
+            
+            if (!data.data || data.data.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Keine Benachrichtigungen.</div>';
+                return;
+            }
+            
+            const typeIcons = { outbid: '⚡', sale: '💰', purchase: '🛒', bid_deposit: '🔨' };
+            
+            list.innerHTML = data.data.map(n => {
+                const icon = typeIcons[n.type] || '🔔';
+                const bg = n.is_read ? 'var(--card-glass)' : 'rgba(59,130,246,0.08)';
+                const border = n.is_read ? 'var(--border)' : 'rgba(59,130,246,0.3)';
+                const date = new Date(n.created_at).toLocaleDateString('de-DE');
+                return `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:12px;cursor:pointer;${n.is_read ? '' : 'font-weight:500;'}" onclick="markRead(${n.id})">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:18px;">${icon}</span>
+                        <div style="flex:1;">
+                            <div style="font-size:13px;">${n.title}</div>
+                            <div style="font-size:12px;color:var(--text-dim);">${n.message}</div>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-dim);">${date}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            console.error('Notifications error:', e);
+        }
+    }
+
+    async function markRead(id) {
+        try {
+            await fetch('/toxic-market/api/api.php?action=mark_notifications_read', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ id: id })
+            });
+            loadNotifications();
+        } catch(e) {}
+    }
+
+    async function markAllRead() {
+        try {
+            await fetch('/toxic-market/api/api.php?action=mark_notifications_read', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({})
+            });
+            loadNotifications();
+            toast('Alle gelesen', 'success');
+        } catch(e) {}
+    }
+
+    // Load on page ready
+    loadTransactions();
+    loadNotifications();
+    </script>
+</body>
+</html>

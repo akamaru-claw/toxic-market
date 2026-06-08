@@ -19,9 +19,6 @@
     ExpiresByType image/webp "access plus 30 days"
 </IfModule>
 
-# Force PHP processing for .html files (they contain PHP code)
-AddType application/x-httpd-php .html
-
 # Force no-cache for HTML so updates are always visible
 <FilesMatch "\.(html|php)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
@@ -36,21 +33,21 @@ RewriteEngine On
     RewriteRule ^includes/ - [F,L]
     
     # Card detail pages
-    RewriteRule ^card/([0-9]+)$ /toxic-market/card.html?id=$1 [QSA,L]
+    RewriteRule ^card/([0-9]+)$ /toxic-market/card.php?id=$1 [QSA,L]
     # Listing detail pages
-    RewriteRule ^listing/([a-zA-Z0-9]+)$ /toxic-market/listing.html?id=$1 [QSA,L]
+    RewriteRule ^listing/([a-zA-Z0-9]+)$ /toxic-market/listing.php?id=$1 [QSA,L]
     # Seller profile pages
-    RewriteRule ^seller/([0-9]+)$ /toxic-market/seller.html?id=$1 [QSA,L]
+    RewriteRule ^seller/([0-9]+)$ /toxic-market/seller.php?id=$1 [QSA,L]
     # Auction detail pages
-    RewriteRule ^auction/([a-zA-Z0-9]+)$ /toxic-market/auction.html?id=$1 [QSA,L]
+    RewriteRule ^auction/([a-zA-Z0-9]+)$ /toxic-market/auction.php?id=$1 [QSA,L]
     # Create listing page
-    RewriteRule ^create$ /toxic-market/create.html [QSA,L]
+    RewriteRule ^create$ /toxic-market/create.php [QSA,L]
     # Create auction page
-    RewriteRule ^create-auction$ /toxic-market/create-auction.html [QSA,L]
+    RewriteRule ^create-auction$ /toxic-market/create-auction.php [QSA,L]
     # Dashboard
-    RewriteRule ^dashboard$ /toxic-market/dashboard.html [QSA,L]
+    RewriteRule ^dashboard$ /toxic-market/dashboard.php [QSA,L]
     # Set Builder
-    RewriteRule ^set-builder$ /toxic-market/set-builder.html [QSA,L]
+    RewriteRule ^set-builder$ /toxic-market/set-builder.php [QSA,L]
     # Sitemap
     RewriteRule ^sitemap\.xml$ /toxic-market/sitemap.php [QSA,L]
     # Image uploads - serve via PHP only (no direct access)

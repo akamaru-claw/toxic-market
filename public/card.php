@@ -1,0 +1,228 @@
+<?php
+/**
+ * Toxic Market — Card Detail Page
+ */
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
+
+$id = (int)($_GET['id'] ?? 0);
+if (!$id) { header('Location: /toxic-market/'); exit; }
+
+$db = getDB();
+$stmt = $db->prepare('SELECT * FROM card_templates WHERE id = ?');
+$stmt->execute([$id]);
+$card = $stmt->fetch();
+if (!$card) { header('Location: /toxic-market/'); exit; }
+
+$card['holo_positions'] = json_decode($card['holo_positions'], true);
+
+// Get listings for this card
+$stmt2 = $db->prepare('SELECT l.*, u.display_name as seller_name 
+    FROM listings l JOIN users u ON l.seller_id = u.id 
+    WHERE l.card_template_id = ? AND l.is_sold = 0 ORDER BY l.price_sats ASC');
+$stmt2->execute([$id]);
+$listings = $stmt2->fetchAll();
+
+// Get auctions for this card
+$stmt3 = $db->prepare('SELECT a.*, u.display_name as seller_name,
+    (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id) as bid_count
+    FROM auctions a JOIN users u ON a.seller_id = u.id
+    WHERE a.card_template_id = ? AND a.status = \'active\' AND a.ends_at > datetime(\'now\')
+    ORDER BY a.ends_at ASC');
+$stmt3->execute([$id]);
+$auctions = $stmt3->fetchAll();
+
+$gen_labels = [1 => 'Genesis Edition 2025', 2 => 'Zitadelle Edition 2026', 3 => 'Genesis Remake (EN)'];
+$gen_label = $gen_labels[$card['generation']] ?? 'Unbekannt';
+$gen_class = "gen-{$card['generation']}";
+$total_run = $card['generation'] == 3 ? 35 : 210;
+$holo_count = count($card['holo_positions']);
+$holo_pct = $total_run > 0 ? round(($holo_count / $total_run) * 100, 1) : 0;
+$isHolo = in_array($card['id'], $card['holo_positions']);
+$cardImageUrl = "/toxic-market/cards/card.svg.php?id={$card['id']}&gen={$card['generation']}&name=" . urlencode($card['name']) . "&holo=" . ($isHolo ? '1' : '0');
+
+// Get current block for proof
+$ch = curl_init('https://mempool.space/api/blocks/tip/height');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+$block_height = curl_exec($ch) ?: '?';
+curl_close($ch);
+?>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><?= htmlspecialchars($card['name']) ?> — Toxic Market</title>
+    <meta name="description" content="<?= htmlspecialchars($gen_label) ?> · <?= $total_run ?> Stück<?= $holo_count > 0 ? ' · ' . $holo_count . '× Holo' : '' ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($card['name']) ?> — Toxic Market">
+    <meta property="og:description" content="<?= htmlspecialchars($gen_label) ?> · <?= $total_run ?> Stück">
+    <meta property="og:image" content="https://ml-bets.com<?= $cardImageUrl ?>">
+    <meta name="twitter:card" content="summary_large_image">
+    <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
+    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
+</head>
+<body>
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
+            <div class="nav-links">
+                <a href="/toxic-market/#cards" class="desktop-link">Karten</a>
+                <a href="/toxic-market/#listings" class="desktop-link">Kaufen</a>
+                <button id="login-btn" class="btn btn-outline btn-sm" onclick="showAuth()">Anmelden</button>
+                <div id="user-menu" class="hidden" style="display:flex;align-items:center;gap:8px;">
+                    <span id="user-name" style="color:var(--accent);font-weight:600;font-size:14px;"></span>
+                    <button class="btn btn-sm" onclick="logout()">✕</button>
+                </div>
+                <button class="hamburger" onclick="toggleMobileNav()">☰</button>
+            </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav hidden">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <a id="mobile-dashboard" href="/toxic-market/dashboard" class="hidden">📊 Dashboard</a>
+            <a id="mobile-login" href="#" onclick="showAuth();toggleMobileNav();return false;">🔑 Anmelden</a>
+        </div>
+    </nav>
+
+    <div class="card-detail container">
+        <a href="/toxic-market/#cards" class="back-link">← Zurück zur Übersicht</a>
+        
+        <div class="card-detail-grid">
+            <div class="card-detail-image">
+                <img src="<?= $cardImageUrl ?>" alt="<?= htmlspecialchars($card['name']) ?>" style="width:100%;border-radius:16px;" loading="lazy">
+            </div>
+            
+            <div class="card-detail-info">
+                <span class="card-gen <?= $gen_class ?>"><?= $gen_label ?></span>
+                <h1><?= htmlspecialchars($card['name']) ?></h1>
+                <p class="card-artist">von <strong>MX12ART</strong></p>
+                
+                <div class="card-stats">
+                    <div class="stat-item">
+                        <span class="stat-value"><?= $total_run ?></span>
+                        <span class="stat-label">Stück</span>
+                    </div>
+                    <?php if ($holo_count > 0): ?>
+                    <div class="stat-item">
+                        <span class="stat-value holo-text"><?= $holo_count ?>×</span>
+                        <span class="stat-label">Holo pro Motiv</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value"><?= $holo_pct ?>%</span>
+                        <span class="stat-label">Holo-Rate</span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                
+                <p class="card-description"><?= htmlspecialchars($card['description']) ?></p>
+                
+                <?php if (count($listings) > 0): ?>
+                <div class="card-section">
+                    <h2>🏷️ Zu verkaufen</h2>
+                    <?php foreach ($listings as $l): ?>
+                    <div class="listing-item">
+                        <div class="listing-title"><?= htmlspecialchars($l['title']) ?></div>
+                        <div class="listing-price"><?= number_format($l['price_sats']) ?> sats</div>
+                        <div class="listing-meta">
+                            <?= $l['condition_text'] ?>
+                            <?= $l['serial_number'] ? ' · #'.$l['serial_number'] : '' ?>
+                            · von <strong><?= htmlspecialchars($l['seller_name']) ?></strong>
+                            <?= $l['proof_verified'] ? ' · <span class="proof-verified">✅ Verifiziert</span>' : '' ?>
+                        </div>
+                        <?php if ($l['proof_block_height']): ?>
+                        <div class="proof-info">🔍 Besitznachweis: Block #<?= $l['proof_block_height'] ?></div>
+                        <?php endif; ?>
+                        <button class="btn btn-primary btn-sm" onclick="toast('Kauf-Funktion kommt bald!', 'info')">Kaufen</button>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (count($auctions) > 0): ?>
+                <div class="card-section">
+                    <h2>🔨 Aktive Auktionen</h2>
+                    <?php foreach ($auctions as $a): ?>
+                    <div class="listing-item auction-item">
+                        <div class="listing-title"><?= htmlspecialchars($a['title']) ?></div>
+                        <div class="listing-price"><?= number_format($a['current_price_sats'] ?: $a['starting_price_sats']) ?> sats</div>
+                        <div class="auction-timer">⏱ Endet: <?= date('d.m.Y H:i', strtotime($a['ends_at'])) ?></div>
+                        <div class="listing-meta"><?= $a['bid_count'] ?> Gebote · von <strong><?= htmlspecialchars($a['seller_name']) ?></strong></div>
+                        <button class="btn btn-primary btn-sm" onclick="toast('Biet-Funktion kommt bald!', 'info')">Bieten</button>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (count($listings) === 0 && count($auctions) === 0): ?>
+                <div class="card-section empty-section">
+                    <p>📉 Aktuell keine Angebote für diese Karte.</p>
+                    <button class="btn btn-outline" onclick="showCreateListing(<?= $card['id'] ?>)">Angebot erstellen</button>
+                </div>
+                <?php endif; ?>
+                
+                <div class="proof-box">
+                    <h3>🔍 Besitznachweis</h3>
+                    <p>Beim Kauf: Fordere den Verkäufer auf, seinen Besitz nachzuweisen.</p>
+                    <ol class="proof-steps">
+                        <li data-step="1.">Aktuelle Block-Height abrufen (s.u.)</li>
+                        <li data-step="2."><strong>Block #<?= $block_height ?> + Benutzernamen</strong> auf einen Zettel schreiben</li>
+                        <li data-step="3.">Zettel neben die physische Karte legen</li>
+                        <li data-step="4.">Foto machen und beim Angebot hochladen</li>
+                    </ol>
+                    <div class="proof-hash-box">
+                        <strong>Aktueller Block:</strong> #<?= $block_height ?><br>
+                        <small>Block-Height + deinen Benutzernamen auf den Zettel schreiben</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="auth-modal" class="modal hidden">
+        <div class="modal-backdrop" onclick="hideAuth()"></div>
+        <div class="modal-content">
+            <button class="modal-close" onclick="hideAuth()">✕</button>
+            <div class="auth-tabs">
+                <button class="tab active" onclick="switchTab('login')">Anmelden</button>
+                <button class="tab" onclick="switchTab('register')">Registrieren</button>
+            </div>
+            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                <div class="form-group"><label>Email</label><input type="email" id="login-email" required></div>
+                <div class="form-group"><label>Passwort</label><input type="password" id="login-password" required></div>
+                <button type="submit" class="btn btn-primary btn-full">Anmelden</button>
+                <p id="login-error" class="error hidden"></p>
+            </form>
+            <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+                <div class="form-group"><label>Anzeigename</label><input type="text" id="reg-name" required minlength="2"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="reg-email" required></div>
+                <div class="form-group"><label>Passwort (mind. 6 Zeichen)</label><input type="password" id="reg-password" required minlength="6"></div>
+                <div class="form-group disclaimer-check">
+                    <label class="checkbox-label"><input type="checkbox" id="reg-disclaimer" required><span>Ich verstehe: Toxic Market ist ein Vermittlungsplatz. Kein Custody, keine Haftung.</span></label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Account erstellen</button>
+                <p id="reg-error" class="error hidden"></p>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>🧪 Toxic Market · <strong>Kein Custody, keine Haftung.</strong> P2P-Marktplatz.</p>
+            <p><a href="https://github.com/akamaru-claw/toxic-market">GitHub</a> · <a href="/toxic-market/api/api.php?action=cards">API</a></p>
+        </div>
+    </footer>
+
+    <div id="disclaimer-banner" class="disclaimer-banner">
+        <div class="container">
+            <p>⚠️ <strong>Wichtiger Hinweis:</strong> Toxic Market ist ein reiner Vermittlungsplatz. Der Betreiber verwahrt kein Geld und übernimmt keine Haftung für Transaktionen. Nutze die Besitznachweis-Funktion.</p>
+            <button class="btn btn-sm" onclick="document.getElementById('disclaimer-banner').style.display='none'">Verstanden</button>
+        </div>
+    </div>
+
+    <script src="/toxic-market/js/nostr.js"></script>
+    <script src="/toxic-market/js/toxic.js"></script>
+</body>
+</html>
