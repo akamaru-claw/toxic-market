@@ -32,6 +32,12 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?= htmlspecialchars($listing['title']) ?> — Toxic Market</title>
     <meta name="description" content="<?= htmlspecialchars($listing['description'] ?: $listing['card_desc']) ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($listing['title']) ?> — <?= number_format($listing['price_sats']) ?> sats">
+    <meta property="og:description" content="<?= htmlspecialchars($listing['card_desc']) ?>">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ml-bets.com/toxic-market/listing/<?= $listId ?>">
+    <meta property="og:site_name" content="Toxic Market">
+    <meta name="twitter:card" content="summary_large_image">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
     <link href="/toxic-market/css/toxic.css" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">

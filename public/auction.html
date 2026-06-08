@@ -66,6 +66,12 @@ $priceEur = satsToEur($currentPrice, $prices['eur']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🔨 <?= htmlspecialchars($auction['title']) ?> — Toxic Market</title>
     <meta name="description" content="<?= htmlspecialchars($auction['description'] ?: $auction['card_desc']) ?> — Auktion auf Toxic Market">
+    <meta property="og:title" content="🔨 <?= htmlspecialchars($auction['title']) ?> — Toxic Market Auktion">
+    <meta property="og:description" content="Aktuelles Gebot: <?= number_format($currentPrice) ?> sats — <?= htmlspecialchars($auction['card_desc']) ?>">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ml-bets.com/toxic-market/auction/<?= $aucId ?>">
+    <meta property="og:site_name" content="Toxic Market">
+    <meta name="twitter:card" content="summary_large_image">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
     <link href="/toxic-market/css/toxic.css" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
