@@ -575,3 +575,25 @@ async function loadBlockInfo() {
 
 // Auto-load block info
 loadBlockInfo();
+
+// ─── Notification polling ───
+async function checkNotifications() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch('/toxic-market/api/api.php?action=notifications&unread_only=1&limit=3', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.data && data.data.length > 0) {
+            data.data.forEach(n => {
+                const typeIcons = { outbid: '⚡', sale: '💰', purchase: '🛒', bid_deposit: '🔨' };
+                const icon = typeIcons[n.type] || '🔔';
+                toast(`${icon} ${n.title}: ${n.message}`, n.type === 'outbid' ? 'warning' : 'info', 6000);
+            });
+        }
+    } catch(e) {}
+}
+
+// Check notifications on load and every 60s
+if (currentUser) {
+    checkNotifications();
+    setInterval(checkNotifications, 60000);
+}
