@@ -900,9 +900,15 @@ try {
             $user = requireAuth();
             $type = $_GET['type'] ?? null;
             
-            $sql = 'SELECT t.*, ct.name as card_name FROM transactions t 
+            $sql = 'SELECT t.*, 
+                    COALESCE(ct.name, a.title) as item_name,
+                    COALESCE(l_seller.display_name, a_seller.display_name) as counterparty_name
+                    FROM transactions t 
                     LEFT JOIN listings l ON t.listing_id = l.id 
+                    LEFT JOIN auctions a ON t.auction_id = a.id
                     LEFT JOIN card_templates ct ON l.card_template_id = ct.id
+                    LEFT JOIN users l_seller ON l.seller_id = l_seller.id
+                    LEFT JOIN users a_seller ON a.seller_id = a_seller.id
                     WHERE t.payer_id = ? OR t.payee_id = ?';
             $params = [$user['id'], $user['id']];
             if ($type) {

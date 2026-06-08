@@ -333,10 +333,12 @@ $mySales = $stmt4->fetchAll();
                 const status = statusLabels[t.status] || t.status;
                 const type = typeLabels[t.type] || t.type;
                 const date = new Date(t.created_at).toLocaleDateString('de-DE');
+                const itemName = t.item_name || t.card_name || 'Unbekannt';
+                const counterparty = t.counterparty_name || '';
                 return `<div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;">
                     <div>
-                        <div style="font-weight:600;font-size:14px;">${type}</div>
-                        <div style="font-size:12px;color:var(--text-dim);">${date}</div>
+                        <div style="font-weight:600;font-size:14px;">${type} ${itemName}</div>
+                        <div style="font-size:12px;color:var(--text-dim);">${date}${counterparty ? ' · ' + counterparty : ''}</div>
                     </div>
                     <div style="text-align:right;">
                         <div style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--bitcoin);">${Number(t.amount_sats).toLocaleString()} sats</div>
