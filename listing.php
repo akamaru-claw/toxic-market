@@ -1,0 +1,431 @@
+<?php
+/**
+ * Toxic Market — Listing Detail Page
+ */
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
+
+$db = getDB();
+$listId = $_GET['id'] ?? '';
+if (!$listId) { header('Location: /toxic-market/'); exit; }
+
+$stmt = $db->prepare('SELECT l.*, ct.name as card_name, ct.generation, ct.description as card_desc, ct.holo_positions, ct.total_print_run,
+    u.display_name as seller_name, u.bio as seller_bio, u.id as seller_id, u.created_at as seller_since, u.total_sales, u.nostr_pubkey as seller_nostr
+    FROM listings l 
+    JOIN card_templates ct ON l.card_template_id = ct.id
+    JOIN users u ON l.seller_id = u.id
+    WHERE l.id = ?');
+$stmt->execute([$listId]);
+$listing = $stmt->fetch();
+if (!$listing) { header('Location: /toxic-market/'); exit; }
+
+$images = json_decode($listing['image_urls'], true) ?: [];
+$gen = [1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'][$listing['generation']] ?? '';
+$holo = json_decode($listing['holo_positions'], true) ?: [];
+$conditionLabels = ['mint'=>'Mint (M)','near_mint'=>'Near Mint (NM)','excellent'=>'Excellent (EX)','good'=>'Good (G)','played'=>'Played (P)'];
+$conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['condition_text'];
+?>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><?= htmlspecialchars($listing['title']) ?> — Toxic Market</title>
+    <meta name="description" content="<?= htmlspecialchars($listing['description'] ?: $listing['card_desc']) ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($listing['title']) ?> — <?= number_format($listing['price_sats']) ?> sats">
+    <meta property="og:description" content="<?= htmlspecialchars($listing['card_desc']) ?>">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ml-bets.com/toxic-market/listing/<?= $listId ?>">
+    <meta property="og:site_name" content="Toxic Market">
+    <meta name="twitter:card" content="summary_large_image">
+    <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
+    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
+</head>
+<body>
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/toxic-market/" class="logo"><span class="logo-icon">🧪</span><span class="logo-text">Toxic Market</span></a>
+            <div class="nav-links">
+                <a href="/toxic-market/#cards" class="desktop-link">Karten</a>
+                <a href="/toxic-market/#listings" class="desktop-link">Kaufen</a>
+                <?php if (isLoggedIn()): ?>
+                <span class="desktop-link" style="color:var(--accent);font-weight:600;font-size:14px;"><?= htmlspecialchars(currentUser()['display_name']) ?></span>
+                <?php else: ?>
+                <button class="btn btn-outline btn-sm" onclick="showAuth()">Anmelden</button>
+                <?php endif; ?>
+                <button class="hamburger" onclick="toggleMobileNav()">☰</button>
+            </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav hidden">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <?php if (isLoggedIn()): ?>
+            <a href="/toxic-market/dashboard">📊 Dashboard</a>
+            <?php else: ?>
+            <a href="#" onclick="showAuth();toggleMobileNav();return false;">🔑 Anmelden</a>
+            <?php endif; ?>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width:1000px; padding: 30px 20px 60px;">
+        <a href="/toxic-market/" style="color:var(--text-muted);text-decoration:none;font-size:14px;">← Zurück</a>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px;" class="card-detail-grid">
+            <!-- Images -->
+            <div>
+                <div class="card-detail-image" style="width:100%;aspect-ratio:3/4;background:linear-gradient(145deg,#1a1a3a,#0e0e20);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:80px;overflow:hidden;border:1px solid var(--border);">
+                    <?php if (!empty($images) && $images[0]): ?>
+                    <img src="<?= htmlspecialchars($images[0]) ?>" style="width:100%;height:100%;object-fit:cover;" alt="<?= htmlspecialchars($listing['title']) ?>" id="main-image">
+                    <?php else: ?>
+                    🧪
+                    <?php endif; ?>
+                </div>
+                <?php if (count($images) > 1): ?>
+                <div style="display:flex;gap:8px;margin-top:12px;overflow-x:auto;">
+                    <?php foreach ($images as $i => $img): ?>
+                    <img src="<?= htmlspecialchars($img) ?>" style="width:60px;height:80px;object-fit:cover;border-radius:6px;border:2px solid var(--border);cursor:pointer;" 
+                         onclick="document.getElementById('main-image').src='<?= htmlspecialchars($img) ?>'" alt="Bild <?= $i+1 ?>">
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Details -->
+            <div>
+                <span class="card-gen gen-<?= $listing['generation'] ?>" style="margin-bottom:8px;"><?= $gen ?></span>
+                <h1 style="font-size:1.6rem;font-weight:800;margin:8px 0;"><?= htmlspecialchars($listing['title']) ?></h1>
+                
+                <div style="font-size:2.2rem;font-weight:900;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;margin:16px 0;word-break:break-word;">
+                    ₿ <?= number_format($listing['price_sats']) ?>
+                </div>
+
+                <!-- Condition & Serial -->
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;">
+                    <span style="background:var(--bg-elevated);border:1px solid var(--border);padding:4px 12px;border-radius:20px;font-size:12px;"><?= $conditionLabel ?></span>
+                    <?php if ($listing['serial_number']): ?>
+                    <span style="background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.2);padding:4px 12px;border-radius:20px;font-size:12px;color:var(--accent);">#<?= htmlspecialchars($listing['serial_number']) ?>/<?= $listing['total_print_run'] ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($holo) && $listing['serial_number'] && in_array((int)$listing['serial_number'], $holo)): ?>
+                    <span style="background:var(--holo-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700;font-size:12px;padding:4px 12px;">✨ HOLO</span>
+                    <?php endif; ?>
+                </div>
+
+                <!-- P2P Note -->
+                <div style="background:rgba(247,147,26,0.06);border:1px solid rgba(247,147,26,0.2);border-radius:12px;padding:16px;margin:16px 0;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text);">📌 Versand & Abholung</div>
+                    <p style="font-size:13px;color:var(--text-muted);line-height:1.6;">Versand wird direkt zwischen Käufer und Verkäufer vereinbart. Toxic Market vermittelt nur.</p>
+                </div>
+
+                <!-- Description -->
+                <?php if ($listing['description']): ?>
+                <div style="margin:16px 0;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;">📝 Beschreibung</div>
+                    <p style="font-size:14px;color:var(--text-muted);line-height:1.6;"><?= nl2br(htmlspecialchars($listing['description'])) ?></p>
+                </div>
+                <?php endif; ?>
+
+                <!-- Proof of Ownership -->
+                <?php if ($listing['proof_block_height'] > 0): ?>
+                <div class="proof-box">
+                    <h3>🔍 Besitznachweis</h3>
+                    <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">
+                        Block #<?= number_format($listing['proof_block_height']) ?>
+                        <?php if ($listing['proof_verified']): ?>
+                        <span class="proof-verified"> ✅ Verifiziert</span>
+                        <?php else: ?>
+                        <span class="proof-unverified">⏳ Ausstehend</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($listing['proof_image_url']): ?>
+                    <img src="<?= htmlspecialchars($listing['proof_image_url']) ?>" style="max-width:100%;border-radius:8px;margin-top:8px;" alt="Besitznachweis">
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
+                <!-- Price Breakdown -->
+                <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:20px;">
+                    <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--text-muted);margin-bottom:8px;">
+                        <span>Kartenpreis</span>
+                        <span style="font-family:'JetBrains Mono',monospace;color:var(--text);"><?= number_format($listing['price_sats']) ?> sats</span>
+                    </div>
+                    <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
+                    <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;">
+                        <span>Preis</span>
+                        <span style="font-family:'JetBrains Mono',monospace;color:var(--bitcoin);" id="total-price"><?= number_format($listing['price_sats']) ?> sats</span>
+                    </div>
+                    <div style="text-align:right;font-size:12px;color:var(--text-dim);margin-top:4px;" id="price-eur"></div>
+                </div>
+
+                <!-- Contact Seller -->
+                <div style="background:rgba(247,147,26,0.06);border:1px solid rgba(247,147,26,0.2);border-radius:12px;padding:16px;margin-top:16px;">
+                    <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:12px;">
+                        ⚠️ <strong>Du handelst direkt mit dem Verkäufer.</strong> Toxic Market ist nur ein Marktplatz — keine Zahlungen, keine Haftung, kein Custody.
+                    </p>
+                </div>
+
+                <?php if (!$listing['is_sold']): ?>
+                <button class="btn btn-bitcoin btn-full" style="margin-top:12px;padding:16px;font-size:16px;font-weight:700;" onclick="buyWithLightning()" id="buy-btn">
+                    ⚡ Jetzt kaufen
+                </button>
+                <button class="btn btn-outline btn-full" style="margin-top:8px;" onclick="contactSeller()">
+                    💬 Verkäufer kontaktieren
+                </button>
+                <p style="text-align:center;font-size:11px;color:var(--text-dim);margin-top:8px;">
+                    Lightning oder Onchain. Kontaktiere den Verkäufer für Abholung/Versand.
+                </p>
+                <?php else: ?>
+                <div style="background:rgba(255,68,85,0.08);border:1px solid rgba(255,68,85,0.2);border-radius:12px;padding:16px;margin-top:12px;text-align:center;">
+                    <span style="font-size:18px;">✅</span><br>
+                    <span style="font-weight:700;color:var(--danger);">Verkauft</span>
+                </div>
+                <?php endif; ?>
+
+                <!-- Payment Modal -->
+                <div id="payment-modal" class="modal hidden">
+                    <div class="modal-backdrop" onclick="closePaymentModal()"></div>
+                    <div class="modal-content" style="max-width:440px;">
+                        <button class="modal-close" onclick="closePaymentModal()">✕</button>
+                        <h2 style="font-size:1.3rem;margin-bottom:8px;">⚡ Bezahlen</h2>
+                        <div id="payment-amount" style="font-size:2rem;font-weight:900;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;text-align:center;margin:16px 0;"></div>
+                        <div id="payment-status" style="text-align:center;margin-bottom:16px;color:var(--text-muted);font-size:14px;">Erstelle Lightning-Invoice...</div>
+                        <div id="payment-qr" style="text-align:center;display:none;">
+                            <img id="payment-qr-img" style="max-width:280px;border-radius:12px;margin:12px auto;" alt="QR Code">
+                            <div id="payment-invoice" style="font-family:'JetBrains Mono',monospace;font-size:10px;word-break:break-all;color:var(--text-muted);background:var(--bg);padding:10px;border-radius:8px;margin-top:8px;max-height:80px;overflow-y:auto;"></div>
+                            <button class="btn btn-sm" style="margin-top:8px;" onclick="copyInvoice()">📋 Invoice kopieren</button>
+                        </div>
+                        <div id="payment-onchain" style="display:none;margin-top:16px;padding:16px;background:var(--bg);border-radius:12px;">
+                            <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🔗 Onchain-Alternative</div>
+                            <div id="onchain-address" style="font-family:'JetBrains Mono',monospace;font-size:11px;word-break:break-all;color:var(--accent);"></div>
+                            <button class="btn btn-sm" style="margin-top:8px;" onclick="copyOnchain()">📋 Adresse kopieren</button>
+                        </div>
+                        <button class="btn btn-sm" style="margin-top:12px;width:100%;" onclick="checkPaymentStatus()">🔄 Zahlungsstatus prüfen</button>
+                        <div id="payment-result" style="display:none;margin-top:16px;padding:16px;border-radius:12px;text-align:center;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seller Info -->
+        <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:16px;padding:24px;margin-top:40px;">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <a href="/toxic-market/seller/<?= $listing['seller_id'] ?>" style="width:56px;height:56px;border-radius:50%;background:var(--holo-gradient);display:flex;align-items:center;justify-content:center;font-size:24px;text-decoration:none;">👤</a>
+                <div>
+                    <a href="/toxic-market/seller/<?= $listing['seller_id'] ?>" style="font-weight:700;font-size:16px;color:var(--text);text-decoration:none;"><?= htmlspecialchars($listing['seller_name']) ?></a>
+                    <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">
+                        Seit <?= date('M Y', strtotime($listing['seller_since'])) ?> · <?= $listing['total_sales'] ?? 0 ?> Verkäufe
+                    </div>
+                </div>
+            </div>
+            <?php if ($listing['seller_bio']): ?>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:12px;"><?= htmlspecialchars($listing['seller_bio']) ?></p>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>🧪 Toxic Market · <strong>Kein Custody, keine Haftung.</strong> P2P-Marktplatz.</p>
+        </div>
+    </footer>
+
+    <script src="/toxic-market/js/nostr.js"></script>
+    <script src="/toxic-market/js/toxic.js"></script>
+    <script>
+    const PRICE_SATS = <?= $listing['price_sats'] ?>;
+    const LISTING_ID = '<?= $listing['id'] ?>';
+    const LOGGED_IN = <?= isLoggedIn() ? 'true' : 'false' ?>;
+
+    // Load EUR price
+    (async () => {
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=btc_price');
+            const data = await res.json();
+            if (data.prices?.eur) {
+                const eur = (PRICE_SATS / 100000000) * data.prices.eur;
+                document.getElementById('price-eur').textContent = `≈ €${eur.toFixed(2)}`;
+            }
+        } catch(e) {}
+    })();
+
+    let currentTransactionId = null;
+    let currentPaymentHash = null;
+    let currentInvoice = null;
+    let paymentCheckInterval = null;
+
+    async function buyWithLightning() {
+        if (!LOGGED_IN) { showAuth(); return; }
+        
+        const btn = document.getElementById('buy-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Erstelle Invoice...';
+        
+        document.getElementById('payment-modal').classList.remove('hidden');
+        document.getElementById('payment-amount').textContent = number_format(PRICE_SATS) + ' sats';
+        document.getElementById('payment-status').textContent = 'Erstelle Lightning-Invoice...';
+        document.getElementById('payment-qr').style.display = 'none';
+        document.getElementById('payment-result').style.display = 'none';
+        document.getElementById('payment-onchain').style.display = 'none';
+        
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=create_invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    amount_sats: PRICE_SATS,
+                    type: 'listing',
+                    listing_id: LISTING_ID
+                })
+            });
+            const data = await res.json();
+            
+            if (data.success && data.payment_request) {
+                // Lightning invoice created
+                currentTransactionId = data.transaction_id;
+                currentPaymentHash = data.payment_hash;
+                currentInvoice = data.payment_request;
+                
+                document.getElementById('payment-status').textContent = 'Scanne den QR-Code oder kopiere die Invoice:';
+                document.getElementById('payment-qr').style.display = 'block';
+                document.getElementById('payment-qr-img').src = data.qr_url;
+                document.getElementById('payment-invoice').textContent = data.payment_request;
+                
+                // Also show onchain option
+                loadOnchainAddress();
+                
+                // Start polling for payment
+                startPaymentPolling();
+            } else if (data.success && data.payment_method === 'manual') {
+                // LNBits not configured, manual payment
+                currentTransactionId = data.transaction_id;
+                document.getElementById('payment-status').textContent = data.message || 'Lightning nicht verfügbar. Bitte kontaktiere den Verkäufer direkt.';
+                document.getElementById('payment-result').style.display = 'block';
+                document.getElementById('payment-result').style.background = 'rgba(247,147,26,0.1)';
+                document.getElementById('payment-result').style.border = '1px solid rgba(247,147,26,0.3)';
+                document.getElementById('payment-result').innerHTML = '⚠️ Lightning-Zahlung nicht konfiguriert.<br>Kontaktiere den Verkäufer direkt für die Zahlungsabwicklung.';
+            } else {
+                document.getElementById('payment-status').textContent = 'Fehler: ' + (data.error || 'Unbekannter Fehler');
+                document.getElementById('payment-result').style.display = 'block';
+                document.getElementById('payment-result').style.background = 'rgba(255,68,85,0.1)';
+                document.getElementById('payment-result').style.border = '1px solid rgba(255,68,85,0.3)';
+                document.getElementById('payment-result').innerHTML = '❌ ' + (data.error || 'Invoice konnte nicht erstellt werden.');
+            }
+        } catch(e) {
+            document.getElementById('payment-status').textContent = 'Server-Fehler. Bitte versuche es später erneut.';
+            console.error('Invoice error:', e);
+        }
+        
+        btn.disabled = false;
+        btn.textContent = '⚡ Jetzt kaufen';
+    }
+
+    function startPaymentPolling() {
+        if (paymentCheckInterval) clearInterval(paymentCheckInterval);
+        paymentCheckInterval = setInterval(checkPaymentStatus, 8000);
+        // Also check after 3 seconds for fast payments
+        setTimeout(checkPaymentStatus, 3000);
+    }
+
+    async function checkPaymentStatus() {
+        if (!currentTransactionId) {
+            toast('Keine aktive Transaktion', 'warning');
+            return;
+        }
+        
+        try {
+            const res = await fetch(`/toxic-market/api/api.php?action=check_payment&transaction_id=${currentTransactionId}`, {
+                credentials: 'same-origin'
+            });
+            const data = await res.json();
+            
+            if (data.status === 'settled') {
+                // Payment confirmed!
+                clearInterval(paymentCheckInterval);
+                paymentCheckInterval = null;
+                
+                document.getElementById('payment-status').textContent = '✅ Zahlung bestätigt!';
+                document.getElementById('payment-result').style.display = 'block';
+                document.getElementById('payment-result').style.background = 'rgba(0,255,136,0.1)';
+                document.getElementById('payment-result').style.border = '1px solid rgba(0,255,136,0.3)';
+                document.getElementById('payment-result').innerHTML = '🎉 <strong>Kauf bestätigt!</strong><br>Die Karte gehört dir. Der Verkäufer wird kontaktiert.';
+                
+                toast('Zahlung bestätigt! 🎉', 'success', 10000);
+                
+                // Reload after 5 seconds
+                setTimeout(() => location.reload(), 5000);
+            } else {
+                document.getElementById('payment-status').textContent = 'Warte auf Zahlung... (prüfe automatisch)';
+            }
+        } catch(e) {
+            console.error('Payment check error:', e);
+        }
+    }
+
+    async function loadOnchainAddress() {
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=onchain_address', {
+                credentials: 'same-origin'
+            });
+            const data = await res.json();
+            if (data.success && data.address) {
+                document.getElementById('payment-onchain').style.display = 'block';
+                document.getElementById('onchain-address').textContent = data.address;
+            }
+        } catch(e) {}
+    }
+
+    function copyInvoice() {
+        if (currentInvoice) {
+            navigator.clipboard.writeText(currentInvoice).then(() => {
+                toast('Invoice kopiert!', 'success');
+            });
+        }
+    }
+
+    function copyOnchain() {
+        const addr = document.getElementById('onchain-address').textContent;
+        if (addr) {
+            navigator.clipboard.writeText(addr).then(() => {
+                toast('Adresse kopiert!', 'success');
+            });
+        }
+    }
+
+    function closePaymentModal() {
+        document.getElementById('payment-modal').classList.add('hidden');
+        if (paymentCheckInterval) {
+            clearInterval(paymentCheckInterval);
+            paymentCheckInterval = null;
+        }
+    }
+
+    function number_format(n) {
+        return Number(n).toLocaleString('de-DE');
+    }
+
+    function contactSeller() {
+        const sellerName = '<?= htmlspecialchars($listing['seller_name'], ENT_QUOTES) ?>';
+        const sellerId = '<?= $listing['seller_id'] ?>';
+        
+        <?php if (!empty($listing['seller_nostr'])): ?>
+        const nostrPubkey = '<?= htmlspecialchars($listing['seller_nostr'], ENT_QUOTES) ?>';
+        if (window.nostr) {
+            toast('Öffne Nostr DM an ' + sellerName, 'info');
+            navigator.clipboard.writeText(nostrPubkey).then(() => {
+                toast('Nostr-Pubkey kopiert! Sende eine DM über deinen Nostr-Client.', 'success');
+            });
+        } else {
+            navigator.clipboard.writeText(nostrPubkey).then(() => {
+                toast('Nostr-Pubkey kopiert! Kontaktiere ' + sellerName + ' über Nostr.', 'success');
+            });
+        }
+        <?php else: ?>
+        window.location.href = '/toxic-market/seller/' + sellerId;
+        toast('Kontaktiere ' + sellerName + ' über das Profil.', 'info');
+        <?php endif; ?>
+    }
+    </script>
+</body>
+</html>
