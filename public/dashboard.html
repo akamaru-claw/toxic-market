@@ -228,11 +228,35 @@ $mySales = $stmt4->fetchAll();
                 <?php foreach ($myPurchases as $p): ?>
                 <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:16px;">
                     <div style="font-weight:600;"><?= htmlspecialchars($p['listing_title'] ?? 'Unbekannt') ?></div>
-                    <div style="font-size:13px;color:var(--text-muted);">Von <?= htmlspecialchars($p['seller_name'] ?? 'Unbekannt') ?> · <?= number_format($p['amount_sats']) ?> sats · <?= $p['status'] ?></div>
+                    <div style="font-size:13px;color:var(--text-muted);">Von <?= htmlspecialchars($p['seller_name'] ?? 'Unbekannt') ?> · <?= number_format($p['amount_sats']) ?> sats · 
+                        <?php
+                        $statusLabels = ['pending' => '⏳ Ausstehend', 'settled' => '✅ Bestätigt', 'cancelled' => '❌ Storniert', 'manual' => '🤝 Manuell'];
+                        echo $statusLabels[$p['status']] ?? $p['status'];
+                        ?>
+                    </div>
                 </div>
                 <?php endforeach; ?>
             </div>
             <?php endif; ?>
+        </div>
+
+        <!-- Transactions -->
+        <div style="margin-bottom:40px;">
+            <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:16px;">💸 Transaktionen</h2>
+            <div id="transactions-list" style="display:flex;flex-direction:column;gap:10px;">
+                <div style="text-align:center;padding:20px;color:var(--text-muted);">Laden...</div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div style="margin-bottom:40px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h2 style="font-size:1.3rem;font-weight:700;margin:0;">🔔 Benachrichtigungen</h2>
+                <button class="btn btn-sm btn-outline" onclick="markAllRead()">Alle gelesen</button>
+            </div>
+            <div id="notifications-list" style="display:flex;flex-direction:column;gap:10px;">
+                <div style="text-align:center;padding:20px;color:var(--text-muted);">Laden...</div>
+            </div>
         </div>
     </div>
 
@@ -288,6 +312,105 @@ $mySales = $stmt4->fetchAll();
             btn.disabled = false;
         }
     }
+
+    // Load transactions
+    async function loadTransactions() {
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=my_transactions', { credentials: 'same-origin' });
+            const data = await res.json();
+            const list = document.getElementById('transactions-list');
+            if (!list) return;
+            
+            if (!data.data || data.data.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Noch keine Transaktionen.</div>';
+                return;
+            }
+            
+            const statusLabels = { pending: '⏳ Ausstehend', settled: '✅ Bestätigt', cancelled: '❌ Storniert', manual: '🤝 Manuell' };
+            const typeLabels = { purchase: '🛒 Kauf', bid_deposit: '🔨 Deposit', listing: '🏷️ Verkauf' };
+            
+            list.innerHTML = data.data.slice(0, 20).map(t => {
+                const status = statusLabels[t.status] || t.status;
+                const type = typeLabels[t.type] || t.type;
+                const date = new Date(t.created_at).toLocaleDateString('de-DE');
+                return `<div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-weight:600;font-size:14px;">${type}</div>
+                        <div style="font-size:12px;color:var(--text-dim);">${date}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--bitcoin);">${Number(t.amount_sats).toLocaleString()} sats</div>
+                        <div style="font-size:12px;">${status}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            console.error('Transactions error:', e);
+        }
+    }
+
+    // Load notifications
+    async function loadNotifications() {
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=notifications&limit=10', { credentials: 'same-origin' });
+            const data = await res.json();
+            const list = document.getElementById('notifications-list');
+            if (!list) return;
+            
+            if (!data.data || data.data.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Keine Benachrichtigungen.</div>';
+                return;
+            }
+            
+            const typeIcons = { outbid: '⚡', sale: '💰', purchase: '🛒', bid_deposit: '🔨' };
+            
+            list.innerHTML = data.data.map(n => {
+                const icon = typeIcons[n.type] || '🔔';
+                const bg = n.is_read ? 'var(--card-glass)' : 'rgba(59,130,246,0.08)';
+                const border = n.is_read ? 'var(--border)' : 'rgba(59,130,246,0.3)';
+                const date = new Date(n.created_at).toLocaleDateString('de-DE');
+                return `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:12px;cursor:pointer;${n.is_read ? '' : 'font-weight:500;'}" onclick="markRead(${n.id})">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:18px;">${icon}</span>
+                        <div style="flex:1;">
+                            <div style="font-size:13px;">${n.title}</div>
+                            <div style="font-size:12px;color:var(--text-dim);">${n.message}</div>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-dim);">${date}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            console.error('Notifications error:', e);
+        }
+    }
+
+    async function markRead(id) {
+        try {
+            await fetch('/toxic-market/api/api.php?action=mark_notifications_read', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ id: id })
+            });
+            loadNotifications();
+        } catch(e) {}
+    }
+
+    async function markAllRead() {
+        try {
+            await fetch('/toxic-market/api/api.php?action=mark_notifications_read', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({})
+            });
+            loadNotifications();
+            toast('Alle gelesen', 'success');
+        } catch(e) {}
+    }
+
+    // Load on page ready
+    loadTransactions();
+    loadNotifications();
     </script>
 </body>
 </html>
