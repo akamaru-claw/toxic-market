@@ -399,9 +399,19 @@ function checkAndSettlePayment(PDO $db, string $transactionId): array {
 /**
  * Create an in-app notification
  */
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/email.php';
+
 function createNotification(PDO $db, int $userId, string $type, string $title, string $message, string $relatedId = ''): void {
     $stmt = $db->prepare('INSERT INTO notifications (user_id, type, title, message, related_id) VALUES (?, ?, ?, ?, ?)');
     $stmt->execute([$userId, $type, $title, $message, $relatedId]);
+    
+    // Send email for important notification types
+    try {
+        notifyUserEmail($db, $userId, $type, $title, $message);
+    } catch (Exception $e) {
+        // Email failures should not break the main flow
+        error_log('Email notification failed: ' . $e->getMessage());
+    }
 }
 
 /**
