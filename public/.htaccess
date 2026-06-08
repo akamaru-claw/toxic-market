@@ -19,6 +19,9 @@
     ExpiresByType image/webp "access plus 30 days"
 </IfModule>
 
+# Force PHP processing for .html files (they contain PHP code)
+AddType application/x-httpd-php .html
+
 # Force no-cache for HTML so updates are always visible
 <FilesMatch "\.(html|php)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
