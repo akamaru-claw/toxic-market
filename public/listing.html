@@ -243,17 +243,170 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
         } catch(e) {}
     })();
 
+    let currentTransactionId = null;
+    let currentPaymentHash = null;
+    let currentInvoice = null;
+    let paymentCheckInterval = null;
+
+    async function buyWithLightning() {
+        if (!LOGGED_IN) { showAuth(); return; }
+        
+        const btn = document.getElementById('buy-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Erstelle Invoice...';
+        
+        document.getElementById('payment-modal').classList.remove('hidden');
+        document.getElementById('payment-amount').textContent = number_format(PRICE_SATS) + ' sats';
+        document.getElementById('payment-status').textContent = 'Erstelle Lightning-Invoice...';
+        document.getElementById('payment-qr').style.display = 'none';
+        document.getElementById('payment-result').style.display = 'none';
+        document.getElementById('payment-onchain').style.display = 'none';
+        
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=create_invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    amount_sats: PRICE_SATS,
+                    type: 'listing',
+                    listing_id: LISTING_ID
+                })
+            });
+            const data = await res.json();
+            
+            if (data.success && data.payment_request) {
+                // Lightning invoice created
+                currentTransactionId = data.transaction_id;
+                currentPaymentHash = data.payment_hash;
+                currentInvoice = data.payment_request;
+                
+                document.getElementById('payment-status').textContent = 'Scanne den QR-Code oder kopiere die Invoice:';
+                document.getElementById('payment-qr').style.display = 'block';
+                document.getElementById('payment-qr-img').src = data.qr_url;
+                document.getElementById('payment-invoice').textContent = data.payment_request;
+                
+                // Also show onchain option
+                loadOnchainAddress();
+                
+                // Start polling for payment
+                startPaymentPolling();
+            } else if (data.success && data.payment_method === 'manual') {
+                // LNBits not configured, manual payment
+                currentTransactionId = data.transaction_id;
+                document.getElementById('payment-status').textContent = data.message || 'Lightning nicht verfügbar. Bitte kontaktiere den Verkäufer direkt.';
+                document.getElementById('payment-result').style.display = 'block';
+                document.getElementById('payment-result').style.background = 'rgba(247,147,26,0.1)';
+                document.getElementById('payment-result').style.border = '1px solid rgba(247,147,26,0.3)';
+                document.getElementById('payment-result').innerHTML = '⚠️ Lightning-Zahlung nicht konfiguriert.<br>Kontaktiere den Verkäufer direkt für die Zahlungsabwicklung.';
+            } else {
+                document.getElementById('payment-status').textContent = 'Fehler: ' + (data.error || 'Unbekannter Fehler');
+                document.getElementById('payment-result').style.display = 'block';
+                document.getElementById('payment-result').style.background = 'rgba(255,68,85,0.1)';
+                document.getElementById('payment-result').style.border = '1px solid rgba(255,68,85,0.3)';
+                document.getElementById('payment-result').innerHTML = '❌ ' + (data.error || 'Invoice konnte nicht erstellt werden.');
+            }
+        } catch(e) {
+            document.getElementById('payment-status').textContent = 'Server-Fehler. Bitte versuche es später erneut.';
+            console.error('Invoice error:', e);
+        }
+        
+        btn.disabled = false;
+        btn.textContent = '⚡ Jetzt kaufen';
+    }
+
+    function startPaymentPolling() {
+        if (paymentCheckInterval) clearInterval(paymentCheckInterval);
+        paymentCheckInterval = setInterval(checkPaymentStatus, 8000);
+        // Also check after 3 seconds for fast payments
+        setTimeout(checkPaymentStatus, 3000);
+    }
+
+    async function checkPaymentStatus() {
+        if (!currentTransactionId) {
+            toast('Keine aktive Transaktion', 'warning');
+            return;
+        }
+        
+        try {
+            const res = await fetch(`/toxic-market/api/api.php?action=check_payment&transaction_id=${currentTransactionId}`, {
+                credentials: 'same-origin'
+            });
+            const data = await res.json();
+            
+            if (data.status === 'settled') {
+                // Payment confirmed!
+                clearInterval(paymentCheckInterval);
+                paymentCheckInterval = null;
+                
+                document.getElementById('payment-status').textContent = '✅ Zahlung bestätigt!';
+                document.getElementById('payment-result').style.display = 'block';
+                document.getElementById('payment-result').style.background = 'rgba(0,255,136,0.1)';
+                document.getElementById('payment-result').style.border = '1px solid rgba(0,255,136,0.3)';
+                document.getElementById('payment-result').innerHTML = '🎉 <strong>Kauf bestätigt!</strong><br>Die Karte gehört dir. Der Verkäufer wird kontaktiert.';
+                
+                toast('Zahlung bestätigt! 🎉', 'success', 10000);
+                
+                // Reload after 5 seconds
+                setTimeout(() => location.reload(), 5000);
+            } else {
+                document.getElementById('payment-status').textContent = 'Warte auf Zahlung... (prüfe automatisch)';
+            }
+        } catch(e) {
+            console.error('Payment check error:', e);
+        }
+    }
+
+    async function loadOnchainAddress() {
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=onchain_address', {
+                credentials: 'same-origin'
+            });
+            const data = await res.json();
+            if (data.success && data.address) {
+                document.getElementById('payment-onchain').style.display = 'block';
+                document.getElementById('onchain-address').textContent = data.address;
+            }
+        } catch(e) {}
+    }
+
+    function copyInvoice() {
+        if (currentInvoice) {
+            navigator.clipboard.writeText(currentInvoice).then(() => {
+                toast('Invoice kopiert!', 'success');
+            });
+        }
+    }
+
+    function copyOnchain() {
+        const addr = document.getElementById('onchain-address').textContent;
+        if (addr) {
+            navigator.clipboard.writeText(addr).then(() => {
+                toast('Adresse kopiert!', 'success');
+            });
+        }
+    }
+
+    function closePaymentModal() {
+        document.getElementById('payment-modal').classList.add('hidden');
+        if (paymentCheckInterval) {
+            clearInterval(paymentCheckInterval);
+            paymentCheckInterval = null;
+        }
+    }
+
+    function number_format(n) {
+        return Number(n).toLocaleString('de-DE');
+    }
+
     function contactSeller() {
         const sellerName = '<?= htmlspecialchars($listing['seller_name'], ENT_QUOTES) ?>';
         const sellerId = '<?= $listing['seller_id'] ?>';
         
-        // Check if seller has Nostr key — could be used for DM
         <?php if (!empty($listing['seller_nostr'])): ?>
         const nostrPubkey = '<?= htmlspecialchars($listing['seller_nostr'], ENT_QUOTES) ?>';
-        // Try to open Nostr DM via NIP-07 extension
         if (window.nostr) {
             toast('Öffne Nostr DM an ' + sellerName, 'info');
-            // User can use their Nostr client to DM
             navigator.clipboard.writeText(nostrPubkey).then(() => {
                 toast('Nostr-Pubkey kopiert! Sende eine DM über deinen Nostr-Client.', 'success');
             });
@@ -263,7 +416,6 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
             });
         }
         <?php else: ?>
-        // No Nostr — redirect to seller profile
         window.location.href = '/toxic-market/seller/' + sellerId;
         toast('Kontaktiere ' + sellerName + ' über das Profil.', 'info');
         <?php endif; ?>
