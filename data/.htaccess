@@ -1,0 +1,2 @@
+# Prevent web access to config/data files
+Deny from all
