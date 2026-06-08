@@ -159,13 +159,45 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
                     </p>
                 </div>
 
-                <button class="btn btn-bitcoin btn-full" style="margin-top:12px;padding:16px;font-size:16px;font-weight:700;" onclick="contactSeller()">
+                <?php if (!$listing['is_sold']): ?>
+                <button class="btn btn-bitcoin btn-full" style="margin-top:12px;padding:16px;font-size:16px;font-weight:700;" onclick="buyWithLightning()" id="buy-btn">
+                    ⚡ Jetzt kaufen
+                </button>
+                <button class="btn btn-outline btn-full" style="margin-top:8px;" onclick="contactSeller()">
                     💬 Verkäufer kontaktieren
                 </button>
-
                 <p style="text-align:center;font-size:11px;color:var(--text-dim);margin-top:8px;">
-                    Kontaktiere den Verkäufer direkt und einigt euch.
+                    Lightning oder Onchain. Kontaktiere den Verkäufer für Abholung/Versand.
                 </p>
+                <?php else: ?>
+                <div style="background:rgba(255,68,85,0.08);border:1px solid rgba(255,68,85,0.2);border-radius:12px;padding:16px;margin-top:12px;text-align:center;">
+                    <span style="font-size:18px;">✅</span><br>
+                    <span style="font-weight:700;color:var(--danger);">Verkauft</span>
+                </div>
+                <?php endif; ?>
+
+                <!-- Payment Modal -->
+                <div id="payment-modal" class="modal hidden">
+                    <div class="modal-backdrop" onclick="closePaymentModal()"></div>
+                    <div class="modal-content" style="max-width:440px;">
+                        <button class="modal-close" onclick="closePaymentModal()">✕</button>
+                        <h2 style="font-size:1.3rem;margin-bottom:8px;">⚡ Bezahlen</h2>
+                        <div id="payment-amount" style="font-size:2rem;font-weight:900;color:var(--bitcoin);font-family:'JetBrains Mono',monospace;text-align:center;margin:16px 0;"></div>
+                        <div id="payment-status" style="text-align:center;margin-bottom:16px;color:var(--text-muted);font-size:14px;">Erstelle Lightning-Invoice...</div>
+                        <div id="payment-qr" style="text-align:center;display:none;">
+                            <img id="payment-qr-img" style="max-width:280px;border-radius:12px;margin:12px auto;" alt="QR Code">
+                            <div id="payment-invoice" style="font-family:'JetBrains Mono',monospace;font-size:10px;word-break:break-all;color:var(--text-muted);background:var(--bg);padding:10px;border-radius:8px;margin-top:8px;max-height:80px;overflow-y:auto;"></div>
+                            <button class="btn btn-sm" style="margin-top:8px;" onclick="copyInvoice()">📋 Invoice kopieren</button>
+                        </div>
+                        <div id="payment-onchain" style="display:none;margin-top:16px;padding:16px;background:var(--bg);border-radius:12px;">
+                            <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🔗 Onchain-Alternative</div>
+                            <div id="onchain-address" style="font-family:'JetBrains Mono',monospace;font-size:11px;word-break:break-all;color:var(--accent);"></div>
+                            <button class="btn btn-sm" style="margin-top:8px;" onclick="copyOnchain()">📋 Adresse kopieren</button>
+                        </div>
+                        <button class="btn btn-sm" style="margin-top:12px;width:100%;" onclick="checkPaymentStatus()">🔄 Zahlungsstatus prüfen</button>
+                        <div id="payment-result" style="display:none;margin-top:16px;padding:16px;border-radius:12px;text-align:center;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 

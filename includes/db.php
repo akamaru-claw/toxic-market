@@ -149,25 +149,58 @@ function initDB(): void {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )');
 
-    $db->exec('CREATE TABLE IF NOT EXISTS transactions (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
-        listing_id TEXT REFERENCES listings(id),
-        auction_id TEXT REFERENCES auctions(id),
-        payer_id INTEGER REFERENCES users(id),
-        payee_id INTEGER REFERENCES users(id),
-        amount_sats INTEGER NOT NULL,
-        payment_hash TEXT DEFAULT \'\',
-        payment_request TEXT DEFAULT \'\',
-        status TEXT DEFAULT \'pending\',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        settled_at DATETIME
-    )');
+    // Transactions table is now created in the migration section above
+    // to handle both fresh installs and upgrades
 
     // Add columns if they don't exist (safe migration)
     try { $db->exec('ALTER TABLE transactions ADD COLUMN shipping_region TEXT DEFAULT \'\''); } catch(Exception $e) {}
     try { $db->exec('ALTER TABLE listings ADD COLUMN free_shipping BOOLEAN DEFAULT 0'); } catch(Exception $e) {}
     try { $db->exec('ALTER TABLE listings ADD COLUMN payment_method TEXT DEFAULT \'manual\''); } catch(Exception $e) {}
+
+    // Phase 4: Payment-related migrations
+    try { $db->exec('ALTER TABLE users ADD COLUMN onchain_address TEXT DEFAULT \'\''); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE users ADD COLUMN ln_address TEXT DEFAULT \'\''); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE auctions ADD COLUMN deposit_sats INTEGER DEFAULT 0'); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE bids ADD COLUMN deposit_payment_hash TEXT DEFAULT \'\''); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE bids ADD COLUMN deposit_payment_request TEXT DEFAULT \'\''); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE listings ADD COLUMN seller_payment_method TEXT DEFAULT \'lightning\''); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE listings ADD COLUMN seller_onchain_address TEXT DEFAULT \'\''); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE listings ADD COLUMN buyer_id INTEGER REFERENCES users(id)'); } catch(Exception $e) {}
+    try { $db->exec('ALTER TABLE listings ADD COLUMN sold_at DATETIME'); } catch(Exception $e) {}
+
+    // Transactions table — full schema with payment tracking
+    try {
+        $db->exec('CREATE TABLE IF NOT EXISTS transactions (
+            id TEXT PRIMARY KEY,
+            type TEXT NOT NULL,
+            listing_id TEXT REFERENCES listings(id),
+            auction_id TEXT REFERENCES auctions(id),
+            bid_id INTEGER REFERENCES bids(id),
+            payer_id INTEGER REFERENCES users(id),
+            payee_id INTEGER REFERENCES users(id),
+            amount_sats INTEGER NOT NULL,
+            payment_hash TEXT DEFAULT \'\',
+            payment_request TEXT DEFAULT \'\',
+            status TEXT DEFAULT \'pending\',
+            shipping_region TEXT DEFAULT \'\',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            settled_at DATETIME
+        )');
+    } catch(Exception $e) {}
+
+    // Phase 5: Notification table for in-app messages
+    try {
+        $db->exec('CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id),
+            type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT DEFAULT \'\',
+            related_id TEXT DEFAULT \'\',
+            is_read BOOLEAN DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )');
+    } catch(Exception $e) {}
 
     $db->exec('CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,

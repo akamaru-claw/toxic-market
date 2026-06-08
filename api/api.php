@@ -759,6 +759,198 @@ try {
             echo json_encode(['success' => true, 'display_name' => trim($displayName), 'bio' => trim($bio)]);
             break;
 
+        // === PAYMENT: Create Lightning Invoice ===
+        case 'create_invoice':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            
+            $amountSats = intval($data['amount_sats'] ?? 0);
+            $type = $data['type'] ?? 'listing'; // listing, auction_deposit, auction_bid
+            $listingId = $data['listing_id'] ?? null;
+            $auctionId = $data['auction_id'] ?? null;
+            $memo = $data['memo'] ?? 'Toxic Market Payment';
+            
+            if ($amountSats < 100) throw new Exception('Minimum 100 sats', 400);
+            if ($amountSats > 10000000) throw new Exception('Maximum 10,000,000 sats', 400);
+            
+            // Determine payee
+            $payeeId = 0; // platform escrow
+            if ($type === 'listing' && $listingId) {
+                $stmt = $db->prepare('SELECT seller_id, price_sats FROM listings WHERE id = ? AND is_sold = 0');
+                $stmt->execute([$listingId]);
+                $listing = $stmt->fetch();
+                if (!$listing) throw new Exception('Listing not found', 404);
+                $payeeId = $listing['seller_id'];
+                $amountSats = $data['amount_sats'] ?? $listing['price_sats'];
+                $memo = "Toxic Market: {$listing['price_sats']} sats for listing {$listingId}";
+            } elseif ($type === 'auction_deposit' && $auctionId) {
+                $stmt = $db->prepare('SELECT starting_price_sats FROM auctions WHERE id = ? AND status = ?');
+                $stmt->execute([$auctionId, 'active']);
+                $auction = $stmt->fetch();
+                if (!$auction) throw new Exception('Auction not found or not active', 404);
+                // Deposit = 5% of starting price, min 1000 sats
+                $amountSats = max(1000, intval($auction['starting_price_sats'] * 0.05));
+                $memo = "Toxic Market: Bid deposit for auction {$auctionId}";
+            }
+            
+            // Create LNBits invoice
+            $invoice = createLNBitsInvoice($amountSats, $memo);
+            if (!$invoice) {
+                // Fallback: return manual payment info
+                $txId = createTransaction($db, $type, $listingId, $auctionId, $user['id'], $payeeId, $amountSats, '', '');
+                echo json_encode([
+                    'success' => true,
+                    'transaction_id' => $txId,
+                    'type' => $type,
+                    'amount_sats' => $amountSats,
+                    'payment_method' => 'manual',
+                    'message' => 'Lightning nicht konfiguriert. Bitte kontaktiere den Verkäufer direkt.',
+                    'seller_id' => $payeeId,
+                ]);
+                break;
+            }
+            
+            // Record transaction
+            $txId = createTransaction($db, $type, $listingId, $auctionId, $user['id'], $payeeId, $amountSats, $invoice['payment_hash'], $invoice['payment_request']);
+            
+            echo json_encode([
+                'success' => true,
+                'transaction_id' => $txId,
+                'payment_hash' => $invoice['payment_hash'],
+                'payment_request' => $invoice['payment_request'],
+                'checkout_url' => $invoice['checkout_url'],
+                'qr_url' => getQRCodeUrl('lightning:' . $invoice['payment_request']),
+                'amount_sats' => $amountSats,
+                'type' => $type,
+                'expires_in' => 86400,
+            ]);
+            break;
+
+        // === PAYMENT: Check Payment Status ===
+        case 'check_payment':
+            $user = requireAuth();
+            $txId = $_GET['transaction_id'] ?? '';
+            $paymentHash = $_GET['payment_hash'] ?? '';
+            
+            if ($txId) {
+                $stmt = $db->prepare('SELECT * FROM transactions WHERE id = ? AND payer_id = ?');
+                $stmt->execute([$txId, $user['id']]);
+                $tx = $stmt->fetch();
+                if (!$tx) throw new Exception('Transaction not found', 404);
+                
+                if ($tx['status'] === 'settled') {
+                    echo json_encode(['success' => true, 'status' => 'settled', 'transaction' => $tx]);
+                    break;
+                }
+                
+                // Check with LNBits
+                if (!empty($tx['payment_hash'])) {
+                    $payment = checkLNBitsPayment($tx['payment_hash']);
+                    if ($payment['paid']) {
+                        updateTransactionStatus($db, $txId, 'settled');
+                        
+                        // If listing payment, mark as sold
+                        if ($tx['type'] === 'listing' && $tx['listing_id']) {
+                            $db->prepare('UPDATE listings SET is_sold = 1, buyer_id = ? WHERE id = ?')
+                                ->execute([$user['id'], $tx['listing_id']]);
+                            // Increment buyer's total_purchases
+                            $db->prepare('UPDATE users SET total_purchases = total_purchases + 1 WHERE id = ?')
+                                ->execute([$user['id']]);
+                            // Increment seller's total_sales
+                            $db->prepare('UPDATE users SET total_sales = total_sales + 1 WHERE id = (SELECT seller_id FROM listings WHERE id = ?)')
+                                ->execute([$tx['listing_id']]);
+                        }
+                        
+                        // If auction deposit, mark bid deposit as paid
+                        if ($tx['type'] === 'auction_deposit' && $tx['auction_id']) {
+                            // Find the latest unpaid bid for this auction by this user
+                            $stmt2 = $db->prepare('SELECT id FROM bids WHERE auction_id = ? AND bidder_id = ? AND deposit_paid = 0 ORDER BY id DESC LIMIT 1');
+                            $stmt2->execute([$tx['auction_id'], $user['id']]);
+                            $bid = $stmt2->fetch();
+                            if ($bid) {
+                                $db->prepare('UPDATE bids SET deposit_paid = 1, deposit_invoice = ? WHERE id = ?')
+                                    ->execute([$tx['payment_hash'], $bid['id']]);
+                            }
+                        }
+                        
+                        echo json_encode(['success' => true, 'status' => 'settled', 'transaction_id' => $txId]);
+                        break;
+                    }
+                }
+                
+                echo json_encode(['success' => true, 'status' => 'pending', 'transaction_id' => $txId]);
+            } else {
+                throw new Exception('Transaction ID required', 400);
+            }
+            break;
+
+        // === PAYMENT: Get Onchain Address ===
+        case 'onchain_address':
+            $addr = getOnchainAddress($db);
+            echo json_encode([
+                'success' => true,
+                'address' => $addr,
+                'message' => $addr ? 'Sende Bitcoin an diese Adresse für Onchain-Zahlungen.' : 'Onchain-Adresse noch nicht konfiguriert.',
+            ]);
+            break;
+
+        // === MY TRANSACTIONS ===
+        case 'my_transactions':
+            $user = requireAuth();
+            $type = $_GET['type'] ?? null;
+            
+            $sql = 'SELECT t.*, ct.name as card_name FROM transactions t 
+                    LEFT JOIN listings l ON t.listing_id = l.id 
+                    LEFT JOIN card_templates ct ON l.card_template_id = ct.id
+                    WHERE t.payer_id = ? OR t.payee_id = ?';
+            $params = [$user['id'], $user['id']];
+            if ($type) {
+                $sql .= ' AND t.type = ?';
+                $params[] = $type;
+            }
+            $sql .= ' ORDER BY t.created_at DESC LIMIT 50';
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $transactions = $stmt->fetchAll();
+            
+            echo json_encode(['data' => $transactions, 'total' => count($transactions)]);
+            break;
+
+        // === MARK LISTING SOLD ===
+        case 'mark_sold':
+            $user = requireAuth();
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $listingId = $data['listing_id'] ?? '';
+            
+            $stmt = $db->prepare('SELECT * FROM listings WHERE id = ? AND seller_id = ?');
+            $stmt->execute([$listingId, $user['id']]);
+            $listing = $stmt->fetch();
+            if (!$listing) throw new Exception('Listing not found or not yours', 404);
+            
+            $db->prepare('UPDATE listings SET is_sold = 1, sold_at = datetime(\'now\') WHERE id = ?')
+                ->execute([$listingId]);
+            $db->prepare('UPDATE users SET total_sales = total_sales + 1 WHERE id = ?')
+                ->execute([$user['id']]);
+            
+            echo json_encode(['success' => true, 'message' => 'Listing als verkauft markiert']);
+            break;
+
+        // === MY LISTINGS (manage) ===
+        case 'my_listings':
+            $user = requireAuth();
+            $stmt = $db->prepare('SELECT l.*, ct.name as card_name, ct.generation, ct.holo_positions FROM listings l JOIN card_templates ct ON l.card_template_id = ct.id WHERE l.seller_id = ? ORDER BY l.created_at DESC');
+            $stmt->execute([$user['id']]);
+            $listings = $stmt->fetchAll();
+            foreach ($listings as &$l) {
+                $l['image_urls'] = json_decode($l['image_urls'], true);
+                $l['holo_positions'] = json_decode($l['holo_positions'], true);
+            }
+            echo json_encode(['data' => $listings]);
+            break;
+
         // === SERVE IMAGE (secure proxy) ===
         case 'serve_image':
             $filename = $_GET['file'] ?? '';
