@@ -55,7 +55,7 @@ $mySales = $stmt4->fetchAll();
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Mein Dashboard — Toxic Market</title>
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
 </head>
 <body>
     <nav id="nav">
@@ -269,8 +269,8 @@ $mySales = $stmt4->fetchAll();
         </div>
     </footer>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/nostr.js?v=2"></script>
+    <script src="/toxic-market/js/toxic.js?v=2"></script>
     <script>
     async function saveBio() {
         const bio = document.getElementById('bio-input').value;

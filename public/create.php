@@ -29,7 +29,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Toxic Market — Angebot erstellen</title>
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
 </head>
 <body>
@@ -159,8 +159,8 @@ $preselectedCard = intval($_GET['card'] ?? 0);
         </div>
     </footer>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/nostr.js?v=2"></script>
+    <script src="/toxic-market/js/toxic.js?v=2"></script>
     <script>
     let uploadedImages = [];
 

@@ -55,7 +55,7 @@ $rarityColors = [
     <title>Set Builder — Toxic Market</title>
     <meta name="description" content="Welche Toxic Booster Karten fehlen dir? Sammel-Fortschritt, Checklist und Statistiken.">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
     <style>
         .set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
         @media (max-width: 480px) { .set-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
@@ -351,8 +351,8 @@ $rarityColors = [
         </div>
     </footer>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/nostr.js?v=2"></script>
+    <script src="/toxic-market/js/toxic.js?v=2"></script>
     <script>
     const OWNED_IDS = <?= json_encode(array_values($ownedIds)) ?>;
     const TOTAL_CARDS = <?= $totalCards ?>;

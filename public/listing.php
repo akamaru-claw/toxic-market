@@ -42,7 +42,7 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
     <meta property="og:site_name" content="Toxic Market">
     <meta name="twitter:card" content="summary_large_image">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
 </head>
 <body>
@@ -233,8 +233,8 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
         </div>
     </footer>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/nostr.js?v=2"></script>
+    <script src="/toxic-market/js/toxic.js?v=2"></script>
     <script>
     const PRICE_SATS = <?= $listing['price_sats'] ?>;
     const LISTING_ID = '<?= $listing['id'] ?>';

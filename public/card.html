@@ -63,7 +63,7 @@ curl_close($ch);
     <meta property="og:image" content="https://ml-bets.com<?= $cardImageUrl ?>">
     <meta name="twitter:card" content="summary_large_image">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
 </head>
 <body>
@@ -225,7 +225,7 @@ curl_close($ch);
         </div>
     </div>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/nostr.js?v=2"></script>
+    <script src="/toxic-market/js/toxic.js?v=2"></script>
 </body>
 </html>

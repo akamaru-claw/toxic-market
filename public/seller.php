@@ -46,7 +46,7 @@ $stats = [
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title><?= htmlspecialchars($seller['display_name']) ?> — Toxic Market</title>
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
 </head>
 <body>
@@ -176,7 +176,7 @@ $stats = [
         </div>
     </footer>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/nostr.js?v=2"></script>
+    <script src="/toxic-market/js/toxic.js?v=2"></script>
 </body>
 </html>
