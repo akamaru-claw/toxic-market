@@ -134,14 +134,29 @@ function showCreateListing(cardId) {
 }
 
 // API helper
+let currentUser = null;
+let csrfToken = null;
+
 async function api(action, data = null, method = 'GET') {
+    // Refresh CSRF token on GET status calls
+    if (action === 'status' && method === 'GET') {
+        const url = `${API}?action=status`;
+        const res = await fetch(url, { credentials: 'same-origin' });
+        const json = await res.json();
+        if (json.csrf_token) csrfToken = json.csrf_token;
+        return json;
+    }
     const url = data && method === 'GET' 
         ? `${API}?action=${action}&${new URLSearchParams(data)}`
         : `${API}?action=${action}`;
+    const payload = data && method !== 'GET' ? { ...data, csrf_token: csrfToken } : data;
     const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
-    if (data && method !== 'GET') opts.body = JSON.stringify(data);
+    if (payload && method !== 'GET') opts.body = JSON.stringify(payload);
     const res = await fetch(url, opts);
-    return res.json();
+    const json = await res.json();
+    // Update CSRF token from response if provided
+    if (json.csrf_token) csrfToken = json.csrf_token;
+    return json;
 }
 
 // Image upload helper
@@ -253,7 +268,7 @@ async function handleRegister(e) {
     
     try {
         if (window.NostrTM) {
-            const keypair = await NostrTM.generateKeypair();
+            const keypair = await NostrTM.generateNostrKeypair();
             if (keypair) {
                 nostrPubkey = keypair.pubKey;
                 // Save nsec to localStorage (user's responsibility)
