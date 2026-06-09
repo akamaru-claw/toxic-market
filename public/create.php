@@ -159,7 +159,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
         </div>
     </footer>
 
-    <script src="/toxic-market/js/nostr.js?v=2"></script>
+    <script src="/toxic-market/js/nostr.js?v=3"></script>
     <script src="/toxic-market/js/toxic.js?v=2"></script>
     <script>
     let uploadedImages = [];

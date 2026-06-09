@@ -411,7 +411,7 @@ function hasNsec() {
 
 // ─── Export ───
 window.NostrTM = {
-    generateKeypair,
+    generateNostrKeypair,
     signEvent,
     publishToRelays,
     publishProfile,
