@@ -55,7 +55,7 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
         <form id="create-auction" style="margin-top:20px;">
             <div class="form-group">
                 <label>Karte *</label>
-                <select id="card-id" required style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                <select id="card-id" required style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                     <option value="">— Karte auswählen —</option>
                     <?php foreach ($cards as $c): ?>
                     <?php $gn = [1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'][$c['generation']] ?? ''; ?>
@@ -66,7 +66,7 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
 
             <div class="form-group">
                 <label>Titel *</label>
-                <input type="text" id="auc-title" required placeholder="z.B. Genesis #1 The Beginning — MINT Auktion" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                <input type="text" id="auc-title" required placeholder="z.B. Genesis #1 The Beginning — MINT Auktion" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
             </div>
 
             <div class="form-group">
@@ -77,12 +77,12 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="form-group">
                     <label>Startpreis (Sats) *</label>
-                    <input type="number" id="auc-start-price" required min="100" placeholder="10000" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="number" inputmode="numeric" pattern="[0-9]*" id="auc-start-price" required min="100" placeholder="10000" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                     <div style="font-size:11px;color:var(--text-dim);margin-top:4px;" id="start-price-eur"></div>
                 </div>
                 <div class="form-group">
                     <label>Dauer</label>
-                    <select id="auc-duration" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <select id="auc-duration" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                         <option value="24">1 Tag</option>
                         <option value="48">2 Tage</option>
                         <option value="72" selected>3 Tage</option>
@@ -94,7 +94,7 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
                 <div class="form-group">
                     <label>Zustand</label>
-                    <select id="auc-condition" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <select id="auc-condition" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                         <option value="mint">Mint (M)</option>
                         <option value="near_mint">Near Mint (NM)</option>
                         <option value="excellent">Excellent (EX)</option>
@@ -104,11 +104,11 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
                 </div>
                 <div class="form-group">
                     <label>Seriennummer</label>
-                    <input type="text" id="auc-serial" placeholder="042/210" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="text" id="auc-serial" placeholder="042/210" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                 </div>
                 <div class="form-group">
                     <label>Mindestgebot+</label>
-                    <select id="auc-bid-step" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <select id="auc-bid-step" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                         <option value="500">+500 Sats</option>
                         <option value="1000">+1.000 Sats</option>
                         <option value="5000">+5.000 Sats</option>
@@ -120,11 +120,11 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="form-group">
                     <label>Versand DE (Sats)</label>
-                    <input type="number" id="auc-local-ship" min="0" value="0" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="number" inputmode="numeric" pattern="[0-9]*" id="auc-local-ship" min="0" value="0" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                 </div>
                 <div class="form-group">
                     <label>Versand International (Sats)</label>
-                    <input type="number" id="auc-intl-ship" min="0" value="0" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="number" inputmode="numeric" pattern="[0-9]*" id="auc-intl-ship" min="0" value="0" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                 </div>
             </div>
 
