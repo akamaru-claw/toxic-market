@@ -134,7 +134,6 @@ function showCreateListing(cardId) {
 }
 
 // API helper
-let currentUser = null;
 let csrfToken = null;
 
 async function api(action, data = null, method = 'GET') {

@@ -270,7 +270,7 @@ $mySales = $stmt4->fetchAll();
     </footer>
 
     <script src="/toxic-market/js/nostr.js?v=4"></script>
-    <script src="/toxic-market/js/toxic.js?v=4"></script>
+    <script src="/toxic-market/js/toxic.js?v=5"></script>
     <script>
     async function saveBio() {
         const bio = document.getElementById('bio-input').value;

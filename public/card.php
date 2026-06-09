@@ -226,6 +226,6 @@ curl_close($ch);
     </div>
 
     <script src="/toxic-market/js/nostr.js?v=4"></script>
-    <script src="/toxic-market/js/toxic.js?v=4"></script>
+    <script src="/toxic-market/js/toxic.js?v=5"></script>
 </body>
 </html>

@@ -234,7 +234,7 @@ $conditionLabel = $conditionLabels[$listing['condition_text']] ?? $listing['cond
     </footer>
 
     <script src="/toxic-market/js/nostr.js?v=4"></script>
-    <script src="/toxic-market/js/toxic.js?v=4"></script>
+    <script src="/toxic-market/js/toxic.js?v=5"></script>
     <script>
     const PRICE_SATS = <?= $listing['price_sats'] ?>;
     const LISTING_ID = '<?= $listing['id'] ?>';
