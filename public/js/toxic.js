@@ -50,19 +50,73 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAuctions();
     checkAuth();
     setupFilters();
-    // Close mobile nav on link click
+    // Close mobile nav on link click (with slide-out animation)
     document.querySelectorAll('#mobile-nav a').forEach(a => {
         a.addEventListener('click', () => {
             const nav = document.getElementById('mobile-nav');
-            if (nav) nav.classList.add('hidden');
+            if (nav) { nav.classList.remove('nav-open', 'open'); }
         });
     });
+
+    // Close mobile nav on outside tap
+    document.addEventListener('click', (e) => {
+        const nav = document.getElementById('mobile-nav');
+        const hamburger = document.getElementById('hamburger');
+        if (nav && nav.classList.contains('nav-open') && !nav.contains(e.target) && !hamburger?.contains(e.target)) {
+            nav.classList.remove('nav-open', 'open');
+        }
+    });
+
+    // Smooth scroll for anchor links on mobile
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+
+    // Touch feedback for cards
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (isTouchDevice) {
+        document.addEventListener('touchstart', (e) => {
+            const card = e.target.closest('.card-item, .gen-card, .listing-item');
+            if (card) card.classList.add('touch-active');
+        }, { passive: true });
+        document.addEventListener('touchend', () => {
+            document.querySelectorAll('.touch-active').forEach(el => el.classList.remove('touch-active'));
+        }, { passive: true });
+
+        // Bid input: inputmode=numeric for mobile number pad
+        document.querySelectorAll('.bid-input, input[name="bid_amount"]').forEach(input => {
+            input.setAttribute('inputmode', 'numeric');
+            input.setAttribute('pattern', '[0-9]*');
+        });
+
+        // Prevent double-tap zoom on buttons
+        let lastTap = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTap < 300) {
+                e.preventDefault();
+            }
+            lastTap = now;
+        }, { passive: false });
+    }
 });
 
-// Toggle mobile hamburger nav
+// Toggle mobile hamburger nav (with slide animation)
 function toggleMobileNav() {
     const nav = document.getElementById('mobile-nav');
-    if (nav) nav.classList.toggle('hidden');
+    if (!nav) return;
+    nav.classList.toggle('nav-open');
+    nav.classList.toggle('open');
+    // Sync hidden class for legacy compat
+    if (nav.classList.contains('nav-open')) {
+        nav.classList.remove('hidden');
+    }
 }
 
 // Navigate to card detail page

@@ -48,7 +48,10 @@ $rarityColors = [
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#08080f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Set Builder — Toxic Market</title>
     <meta name="description" content="Welche Toxic Booster Karten fehlen dir? Sammel-Fortschritt, Checklist und Statistiken.">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
@@ -197,7 +200,7 @@ $rarityColors = [
                 <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
         </div>
-        <div id="mobile-nav" class="mobile-nav hidden">
+        <div id="mobile-nav" class="mobile-nav">
             <a href="/toxic-market/#cards">🃏 Karten</a>
             <a href="/toxic-market/set-builder" style="color:var(--accent);">📋 Set Builder</a>
             <a href="/toxic-market/#listings">🏷️ Kaufen</a>

@@ -49,7 +49,10 @@ $mySales = $stmt4->fetchAll();
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#08080f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Mein Dashboard — Toxic Market</title>
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
     <link href="/toxic-market/css/toxic.css" rel="stylesheet">
@@ -66,7 +69,7 @@ $mySales = $stmt4->fetchAll();
                 <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
         </div>
-        <div id="mobile-nav" class="mobile-nav hidden">
+        <div id="mobile-nav" class="mobile-nav">
             <a href="/toxic-market/#cards">🃏 Karten</a>
             <a href="/toxic-market/#listings">🏷️ Kaufen</a>
             <a href="/toxic-market/#auctions">🔨 Auktionen</a>
