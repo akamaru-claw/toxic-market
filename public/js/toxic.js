@@ -316,6 +316,51 @@ async function loginNostr() {
     } catch(e) { toast('Server-Fehler', 'error'); }
 }
 
+async function loginWithNsec() {
+    const input = document.getElementById('login-nsec');
+    const key = input ? input.value.trim() : '';
+    if (!key) { toast('Bitte nsec oder npub eingeben', 'warning'); return; }
+    
+    let pubKeyHex = null;
+    let nsec = null;
+    
+    if (key.startsWith('nsec1')) {
+        if (!window.NostrTM) { toast('Nostr-Bibliothek nicht geladen', 'warning'); return; }
+        const privKeyHex = NostrTM.decodeNsec(key);
+        if (!privKeyHex) { toast('Ungültiger nsec-Schlüssel', 'error'); return; }
+        // Initialize crypto lib to derive pubkey
+        const lib = await NostrTM.initSecp256k1();
+        if (!lib) { toast('Krypto-Bibliothek nicht geladen', 'warning'); return; }
+        pubKeyHex = bytesToHex(new Uint8Array(lib.schnorr.getPublicKey(hexToBytes(privKeyHex))));
+        nsec = key;
+    } else if (key.startsWith('npub1')) {
+        if (!window.NostrTM) { toast('Nostr-Bibliothek nicht geladen', 'warning'); return; }
+        const decoded = NostrTM.decodeNpub(key);
+        if (!decoded) { toast('Ungültiger npub-Schlüssel', 'error'); return; }
+        pubKeyHex = decoded;
+    } else if (/^[0-9a-f]{64}$/i.test(key)) {
+        pubKeyHex = key.toLowerCase();
+    } else {
+        toast('Ungültiges Format. nsec1..., npub1... oder Hex.', 'error');
+        return;
+    }
+    
+    try {
+        const res = await api('login', { nostr_pubkey: pubKeyHex }, 'POST');
+        if (res.success) {
+            // Save nsec locally if provided (for signing)
+            if (nsec && window.NostrTM) {
+                NostrTM.saveNsec(nsec);
+            }
+            hideAuth();
+            checkAuth();
+            location.reload();
+        } else {
+            toast(res.error || 'Login fehlgeschlagen', 'error');
+        }
+    } catch(e) { toast('Server-Fehler', 'error'); }
+}
+
 function showError(id, msg) {
     const el = document.getElementById(id);
     if (!el) return;

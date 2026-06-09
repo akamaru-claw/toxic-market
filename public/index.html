@@ -252,8 +252,19 @@
             </div>
 
             <div class="auth-divider"><span>oder</span></div>
-            <button class="btn btn-bitcoin btn-full" onclick="loginNostr()">
-                ⚡ Login mit Nostr
+            <!-- Nostr Login: NIP-07 Extension -->
+            <button class="btn btn-bitcoin btn-full" onclick="loginNostr()" id="btn-login-nip07">
+                ⚡ Login mit Nostr-Extension
+            </button>
+            <p style="text-align:center;margin:8px 0;color:var(--text-dim);font-size:12px;">nos2x, Alby, etc.</p>
+            <!-- Nostr Login: nsec Key -->
+            <div class="auth-divider"><span>oder nsec</span></div>
+            <div class="form-group" style="margin-top:12px;">
+                <label>nsec / npub</label>
+                <input type="password" id="login-nsec" placeholder="nsec1... oder npub1..." style="font-size:16px;" autocomplete="off">
+            </div>
+            <button class="btn btn-outline btn-full" onclick="loginWithNsec()" style="margin-top:8px;border-color:var(--purple);color:var(--purple);">
+                🔑 Login mit Schlüssel
             </button>
         </div>
     </div>

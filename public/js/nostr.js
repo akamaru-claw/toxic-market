@@ -113,28 +113,34 @@ function decodeNpub(npub) {
     return bytesToHex(new Uint8Array(decoded.data));
 }
 
-// ─── Schnorr Signature (via Web Crypto + noble-secp256k1 CDN) ───
-// We load the library dynamically
+// ─── Schnorr Signature (via @noble/curves secp256k1) ───
+// @noble/curves has schnorr support; @noble/secp256k1 v2 does NOT
 let secp256k1 = null;
 
 async function initSecp256k1() {
     if (secp256k1) return secp256k1;
-    try {
-        // Try dynamic import from local vendor file
-        const mod = await import('/toxic-market/js/vendor/secp256k1.js');
-        secp256k1 = mod;
-        return secp256k1;
-    } catch(e) {
-        console.warn('Failed to load local secp256k1, trying CDN fallback');
+    // Try @noble/curves (has schnorr) via CDN
+    const urls = [
+        'https://esm.sh/@noble/curves@1.4.0/secp256k1',
+        'https://cdn.jsdelivr.net/npm/@noble/curves@1.4.0/+esm',
+    ];
+    for (const url of urls) {
         try {
-            const mod = await import('https://cdn.jsdelivr.net/npm/@noble/secp256k1@2.1.0/+esm');
-            secp256k1 = mod;
-            return secp256k1;
-        } catch(e2) {
-            console.error('No secp256k1 available:', e2);
-            return null;
+            const mod = await import(url);
+            // @noble/curves/secp256k1 exports { secp256k1 } with .schnorr
+            const curve = mod.secp256k1 || mod;
+            if (curve.schnorr) {
+                secp256k1 = curve;
+                console.log('Nostr: loaded @noble/curves from', url);
+                return secp256k1;
+            }
+            console.warn('Module from', url, 'has no .schnorr, keys:', Object.keys(mod).slice(0, 10));
+        } catch(e) {
+            console.warn('Failed to load from', url, e.message);
         }
     }
+    console.error('No secp256k1 with schnorr available — Nostr features disabled');
+    return null;
 }
 
 // ─── Generate Keypair ───
@@ -180,7 +186,7 @@ async function signEvent(event, privKeyHex) {
     
     // Sign
     const sigBytes = lib.schnorr.sign(hashHex, privKeyHex);
-    event.sig = bytesToHex(sigBytes);
+    event.sig = bytesToHex(new Uint8Array(sigBytes));
     
     return event;
 }
