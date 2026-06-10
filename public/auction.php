@@ -309,6 +309,7 @@ $priceEur = satsToEur($currentPrice, $prices['eur']);
         </div>
     </footer>
 
+    <script src="/toxic-market/js/noble-curves-bundle.js?v=1"></script>
     <script src="/toxic-market/js/nostr.js?v=4"></script>
     <script src="/toxic-market/js/toxic.js?v=5"></script>
     <script>

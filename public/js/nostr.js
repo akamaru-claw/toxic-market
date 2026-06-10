@@ -114,30 +114,16 @@ function decodeNpub(npub) {
 }
 
 // ─── Schnorr Signature (via @noble/curves secp256k1) ───
-// @noble/curves has schnorr support; @noble/secp256k1 v2 does NOT
+// Loaded from local bundle (noble-curves-bundle.js) — no CDN dependency
 let secp256k1 = null;
 
 async function initSecp256k1() {
     if (secp256k1) return secp256k1;
-    // Try @noble/curves (has schnorr) via CDN
-    const urls = [
-        'https://esm.sh/@noble/curves@1.4.0/secp256k1',
-        'https://cdn.jsdelivr.net/npm/@noble/curves@1.4.0/+esm',
-    ];
-    for (const url of urls) {
-        try {
-            const mod = await import(url);
-            // @noble/curves/secp256k1 exports { secp256k1 } with .schnorr
-            const curve = mod.secp256k1 || mod;
-            if (curve.schnorr) {
-                secp256k1 = curve;
-                console.log('Nostr: loaded @noble/curves from', url);
-                return secp256k1;
-            }
-            console.warn('Module from', url, 'has no .schnorr, keys:', Object.keys(mod).slice(0, 10));
-        } catch(e) {
-            console.warn('Failed to load from', url, e.message);
-        }
+    // Use locally bundled @noble/curves (loaded via <script> tag)
+    if (window.nobleSecp256k1 && window.nobleSecp256k1.schnorr) {
+        secp256k1 = window.nobleSecp256k1;
+        console.log('Nostr: loaded @noble/curves from local bundle');
+        return secp256k1;
     }
     console.error('No secp256k1 with schnorr available — Nostr features disabled');
     return null;
