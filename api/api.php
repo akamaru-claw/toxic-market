@@ -22,8 +22,15 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/payments.php';
 
 /**
- * Auto-end expired auctions
+ * Stub for sending password-reset emails. Replace with real SMTP/Postmark/Amazon SES integration.
+ * Never returns or logs the raw token to API responses.
  */
+function sendResetEmail(string $email, string $resetLink): bool {
+    // Production: use PHPMailer / Symfony Mailer / AWS SES / Postmark / etc.
+    // For now: log only to server error log, never to client response.
+    error_log("Password reset requested for {$email}: {$resetLink}");
+    return true;
+}
 function autoEndExpiredAuctions(PDO $db): void {
     $stmt = $db->prepare("UPDATE auctions SET status = 'ended' WHERE status = 'active' AND ends_at <= datetime('now')");
     $stmt->execute();
@@ -709,11 +716,19 @@ try {
             $token = generateResetToken($email);
             if (!$token) {
                 // Don't reveal whether email exists
-                echo json_encode(['success' => true, 'message' => 'Wenn die E-Mail existiert, wurde ein Reset-Token generiert.']);
+                echo json_encode(['success' => true, 'message' => 'Wenn die E-Mail existiert, wurde ein Reset-Link gesendet.']);
                 break;
             }
             
-            echo json_encode(['success' => true, 'token' => $token, 'message' => 'Reset-Token generiert.']);
+            // Token is NEVER returned in the API response. Production should send it via email.
+            $resetLink = 'https://ml-bets.com/toxic-market/reset-password?token=' . urlencode($token);
+            $mailSent = sendResetEmail($email, $resetLink);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Wenn die E-Mail existiert, wurde ein Reset-Link gesendet.',
+                'debug_email_sent' => $mailSent,
+            ]);
             break;
 
         // === VERIFY RESET TOKEN ===
