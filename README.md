@@ -101,17 +101,17 @@ toxic-market/
 
 ## 🚀 Deploy
 
-```bash
-cd /home/jordy/.openclaw/workspace/toxic-market
-# Einzelne Dateien:
-sshpass -p "$STRATO_SFTP_PASS" sftp "$STRATO_USER@$STRATO_HOST" <<EOF
-put public/index.html /public/toxic-market/index.html
-put public/css/toxic.css /public/toxic-market/css/toxic.css
-EOF
+Credentials müssen lokal als Umgebungsvariablen gesetzt sein:
 
-# Voll-Deploy (alle Dateien):
-bash strato-deploy.sh
+```bash
+export STRATO_HOST="${STRATO_HOST:-}"
+export STRATO_USER="${STRATO_USER:-}"
+export STRATO_PASS="dein-passwort"
+cd /home/jordy/.openclaw/workspace/toxic-market
+bash deploy_toxic.sh
 ```
+
+Oder alternativ über `deploy_toxic.py` (liest ebenfalls aus Env-Variablen).
 
 ## ⚠️ Wichtige Hinweise
 

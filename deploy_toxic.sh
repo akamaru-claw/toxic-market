@@ -9,6 +9,11 @@ REMOTE_ROOT="/public/toxic-market"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+if [ -z "$PASS" ]; then
+    echo "Fehler: STRATO_PASS nicht gesetzt." >&2
+    exit 1
+fi
+
 # Create a batch file for SFTP uploads
 BATCH=$(mktemp)
 

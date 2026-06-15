@@ -8,11 +8,17 @@ import paramiko
 import os
 import sys
 
+import os
+
 HOST = os.environ.get('STRATO_HOST', '')
 USER = os.environ.get('STRATO_USER', '')
 PASS = os.environ.get('STRATO_PASS', '')
 REMOTE_BASE = '/public/toxic-market'
 LOCAL_BASE = '/home/jordy/.openclaw/workspace/toxic-market'
+
+if not PASS:
+    print('Fehler: STRATO_PASS nicht gesetzt.', file=sys.stderr)
+    sys.exit(1)
 
 # All files to deploy (local_path -> remote_path)
 FILES = {
