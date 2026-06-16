@@ -4,7 +4,7 @@
  * SQLite-based, Strato-compatible
  */
 
-define('DB_PATH', $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/toxic_market.db');
+define('DB_PATH', $_ENV['TOXIC_DB_PATH'] ?? $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/toxic_market.db');
 
 function getDB(): PDO {
     static $db = null;
