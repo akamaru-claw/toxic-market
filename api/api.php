@@ -686,27 +686,19 @@ try {
             if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
                 throw new Exception('No file uploaded', 400);
             }
-            $file = $_FILES['image'];
-            $maxSize = 5 * 1024 * 1024; // 5MB
-            if ($file['size'] > $maxSize) throw new Exception('File too large (max 5MB)', 400);
-            
-            $allowed = ['image/jpeg', 'image/png', 'image/webp'];
-            if (!in_array($file['type'], $allowed)) throw new Exception('Only JPG, PNG, WebP allowed', 400);
-            
-            $ext = match($file['type']) {
-                'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'
-            };
-            $filename = bin2hex(random_bytes(8)) . '_' . $user['id'] . '.' . $ext;
-            $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/uploads/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $filepath = $uploadDir . $filename;
-            
-            if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-                throw new Exception('Upload failed', 500);
+
+            try {
+                $uploaded = validateUploadedImage($_FILES['image'], (int)$user['id']);
+            } catch (UploadException $e) {
+                http_response_code($e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                break;
             }
-            
-            $url = '/toxic-market/uploads/' . $filename;
-            echo json_encode(['success' => true, 'url' => $url, 'filename' => $filename]);
+            echo json_encode([
+                'success'  => true,
+                'url'      => $uploaded['url'],
+                'filename' => $uploaded['filename'],
+            ]);
             break;
 
         // === UPDATE LISTING ===

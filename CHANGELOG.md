@@ -5,6 +5,28 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 ## [Unreleased]
 
 ### Added
+- `tests/UploadTest.php`: Security-Smoke-Tests für Bilduploads (erstellt von Akamaru).
+- `includes/validation.php`: `UploadException`, `deleteUploadedImage()` und `logUpload()` für Upload-Auditing.
+
+### Changed
+- `includes/validation.php`: `validateUploadedImage()` härter:
+  - Mindestdimension 32×32 Pixel erzwungen.
+  - GD-Re-Encode in Memory **vor** dem Schreiben (statt `move_uploaded_file()` + nachträgliches Re-Encode).
+  - Transparenzerhalt für PNG/WebP.
+  - Dateiberechtigungen auf `0640`.
+  - Audit-Log in `data/uploads.log`.
+- `api/api.php`: `upload_image` fängt `UploadException` und liefert passenden HTTP-Status + JSON-Fehler.
+- `.htaccess`: CSP ohne `'unsafe-eval'`; `X-XSS-Protection` ergänzt; Kommentar für zukünftiges `unsafe-inline`-Entfernen.
+- `uploads/.htaccess`: Direkter Zugriff verweigert; Uploads werden ausschließlich über `api/api.php?action=serve_image` ausgeliefert.
+
+### Security
+- Dateiuploads werden nun zwingend mit GD re-encoded, bevor sie gespeichert werden. Das neutralisiert Polyglots und entfernt EXIF-Metadaten.
+- CSP erlaubt kein `eval()` mehr (`'unsafe-eval'` entfernt).
+
+### Fixed
+- `includes/validation.php`: Upload-Dateiname jetzt 32 statt 16 hex Zeichen entropisch, um Brute-Force/Rate-Guesing zu erschweren.
+
+### Added
 - `includes/PHPMailer/`: PHPMailer 6.9.1 als lokale SMTP-Transport-Bibliothek (Strato-kompatibel, kein Composer nötig).
 - `includes/email.php`: Echter SMTP/SSL/TLS-Versand via PHPMailer; `data/email_config.json` oder Umgebungsvariablen (`TOXIC_SMTP_*`) aktivieren ihn. Ohne Config bleibt `mail()`-Fallback erhalten.
 - `api/api.php`: Passwort-Reset-E-Mails werden per `sendEmail()` verschickt (HTML-Template, 60-Minuten-Link), statt nur ins Server-Log geschrieben.

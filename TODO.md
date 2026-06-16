@@ -44,7 +44,8 @@
 - [x] `session_regenerate_id(true)` bei Login/Register/Logout gegen Session-Fixation
 - [x] Validierungs-Helper zentralisiert (`includes/validation.php`)
 - [ ] Nostr-Login: Server-seitige Schnorr-Signatur-Verifikation implementieren
-- [ ] Upload-Verzeichnis: MIME-Type-Check härten (Magick/Exif)
+- [x] **Upload-Verzeichnis: MIME-Type-Check härten (Magick/Exif)** — `validateUploadedImage()` prüft `exif_imagetype()`/`getimagesize()`, erzwingt Min-/Max-Dimensionen, re-encodiert mit GD in Memory, schreibt `0640`, loggt in `data/uploads.log`.
+- [ ] Nostr-Login: Server-seitige Schnorr-Signatur-Verifikation implementieren
 - [ ] SQL-Injection-Audit (aktuell vorbereitete Statements)
 - [x] Passwort-Reset per E-Mail aktiviert (SMTP via PHPMailer, sobald `data/email_config.json` vorhanden)
 
@@ -52,6 +53,7 @@
 
 - [x] Smoke-Tests für Auth + Validierung (`tests/AuthTest.php`)
 - [x] Smoke-Tests für E-Mail-Validierung + SMTP-Config-Overrides (`tests/AuthTest.php`)
+- [x] Smoke-Tests für Upload-Härtung (`tests/UploadTest.php`) — prüft Dateiname-Entropie, MIME-Type, Polyglot, Größe, Dimensionen, Owner-Delete, Non-Owner-Abweisung.
 - [x] API-Smoke-Tests: Register, Login, Listing erstellen, Logout (`tests/ApiSmokeTest.php`)
 - [ ] PHP-Unit-Tests für Auth + DB-Migrationen
 - [ ] API-Integrationstests (Status, Register, Login, Listing erstellen)

@@ -31,8 +31,16 @@ Wenn du eine Sicherheitslücke findest, melde sie bitte direkt an den Projekteig
 - **E-Mail-Transport**: PHPMailer 6.9.1 für SMTP/SSL/TLS ist integriert. `mail()` ist Fallback. Konfiguration liegt außerhalb des Webroots in `data/email_config.json` (nicht im Repo). Absender-Domain auf `@ml-bets.com` beschränkt, Versand ratenlimitiert und audit-logged.
 - LNBits-API-Key wird als JSON im `data/`-Verzeichnis gespeichert. Dateiberechtigungen auf `0600` setzen.
 - Keine 2FA. Wird evaluiert, sobald Nostr-Login wieder aktiviert wird.
-- Dateiuploads: keine Viren- oder Bild-Manipulations-Validierung außer MIME-Typ und Größe.
-- CSP erlaubt aktuell `'unsafe-inline'` für Scripts/Styles, weil Teile des Frontends inline JS/CSS nutzen. Sobald alles extern ausgelagert ist, kann `unsafe-inline` entfernt werden.
+- **Dateiuploads**: `validateUploadedImage()` in `includes/validation.php` prüft jetzt:
+  - echte Bildsignatur via `exif_imagetype()`/`getimagesize()` statt `$_FILES['type']`
+  - Mindestdimension 32×32 und Maximaldimension 4096×4096
+  - Dateigröße ≤ 5 MiB
+  - zwingende GD-Re-Encode in Memory vor dem Schreiben (entfernt EXIF/Metadaten und neutralisiert Polyglots)
+  - sicherer, 32-byte-hex-Dateiname mit User-ID-Marker
+  - Dateiberechtigungen `0640`
+  - Audit-Log in `data/uploads.log`
+  - Löschung nur durch den Owner des Dateinamens
+- CSP erlaubt aktuell `'unsafe-inline'` für Scripts/Styles, weil Teile des Frontends inline JS/CSS nutzen. Sobald alles extern ausgelagert ist, kann `unsafe-inline` entfernt werden. `unsafe-eval` wurde bereits entfernt.
 - CSRF-Schutz ist für API-Endpunkte und HTML-Formulare aktiv; `create.php` und `create-auction.php` senden `X-CSRF-Token`.
 
 ## Betriebssicherheit
