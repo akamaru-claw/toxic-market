@@ -101,6 +101,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
                         <option value="excellent">Excellent (EX)</option>
                         <option value="good">Good (G)</option>
                         <option value="played">Played (P)</option>
+                        <option value="poor">Poor (PO)</option>
                     </select>
                 </div>
                 <div class="form-group">
