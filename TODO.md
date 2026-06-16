@@ -9,9 +9,9 @@
   - Lokale `STRATO_PASS` Umgebungsvariable aktualisieren.
 
 - [ ] **Echte E-Mail-Versand für Passwort-Reset** (siehe GitHub Issue #2)
-  - Aktuell nur Stub in `includes/email.php`.
+  - `includes/email.php` unterstützt jetzt Config-Schema + Rate-Limiting + Logging.
   - Optionen: Strato-SMTP, PHPMailer, Postmark, SendGrid.
-  - Rate-Limiting ist implementiert (2026-06-16).
+  - `data/email_config.json` mit Zugangsdaten auf Server anlegen.
 
 - [ ] **LNBits Live-Config auf Server eintragen**
   - Admin-Panel im Dashboard ist implementiert (2026-06-16).
@@ -36,28 +36,27 @@
 ## 🔒 Security
 
 - [x] IP-basiertes Rate-Limiting für Login, Registrierung, Passwort-Reset (`includes/rate_limit.php`)
-- [x] Admin-Check über `isAdmin()` statt hartkodierter E-Mail
-- [x] `.gitignore` für `data/`, `uploads/`, `.env`, Logs
-- [x] Passwort-Mindestlänge auf 8 Zeichen erhöht (`api/api.php`, `includes/auth.php`, `public/js/toxic.js`)
-- [x] Serverseitige Eingabevalidierung für `create_listing` und `create_auction` (Preis, Bild-URLs, Karten-ID, Versand)
-- [x] Content-Security-Policy, XSS-Protection, HSTS, X-Frame-Options, Referrer-Policy in `.htaccess` und API-Responses
+- [x] E-Mail-Versand: Rate-Limiting + Absender-Domain-Validierung + Audit-Log (`includes/email.php`)
+- [x] CSRF-Token auf API und HTML-Formularen (`create.php`, `create-auction.php`)
 - [x] Session-Cookie-Flags (`HttpOnly`, `Secure`, `SameSite=Lax`) serverseitig forcieren
 - [x] `session_regenerate_id(true)` bei Login/Register/Logout gegen Session-Fixation
+- [x] Validierungs-Helper zentralisiert (`includes/validation.php`)
 - [ ] Nostr-Login: Server-seitige Schnorr-Signatur-Verifikation implementieren
-- [x] CSRF-Token auf jeder POST-Seite prüfen (aktuell nur API)
 - [ ] Upload-Verzeichnis: MIME-Type-Check härten (Magick/Exif)
 - [ ] SQL-Injection-Audit (aktuell vorbereitete Statements)
 - [ ] Passwort-Reset per E-Mail aktivieren (SMTP/Postmark/SES)
 
 ## 🧪 Tests
 
+- [x] Smoke-Tests für Auth + Validierung (`tests/AuthTest.php`)
 - [ ] PHP-Unit-Tests für Auth + DB-Migrationen
 - [ ] API-Integrationstests (Status, Register, Login, Listing erstellen)
 - [ ] Frontend-Tests für Kritische Pfade (Login → Listing erstellen)
 
 ## 📚 Dokumentation
 
-- [ ] Public REST API-Doku (OpenAPI / Postman Collection)
+- [x] `API.md`: Interne REST-API-Dokumentation
+- [ ] OpenAPI 3.0 / Postman Collection generieren
 - [x] Admin-Handbuch für Payment-Config (im Dashboard integriert)
 - [x] `SECURITY.md` und `CHANGELOG.md` gepflegt
 - [ ] Contributor-Guide
@@ -67,6 +66,7 @@
 - [x] Root-Level PHP-Dateien und `public/` synchronisieren
 - [x] Deploy-Scripte an aktuelle Struktur anpassen
 - [x] `index.html` aus `public/` ins Repo-Root kopiert (für SPA-Routing via `.htaccess`)
+- [x] Validierungsfunktionen aus `api/api.php` in `includes/validation.php` extrahiert
 - [ ] HTML-Vorlagen in `public/` mit Root-PHP-Dateien synchron halten (Build-Schritt?)
 - [ ] `app.css`, `app.v2.css`, `card.css` etc. — alte Dateien bereinigen
 - [ ] `app.js`, `app.v2.js`, `nostr.js` — Doppelungen auflösen

@@ -4,6 +4,24 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 
 ## [Unreleased]
 
+### Added
+- `API.md`: Erste Public-REST-API-Dokumentation (Endpunkte, Regeln, CSP-Header, offene TODOs).
+- `includes/validation.php`: Zentrale Validierungs-Helper `sanitizeUserText()`, `validateListingPayload()`, `validateAuctionPayload()` aus `api/api.php` extrahiert, um Tests und Wiederverwendung zu ermöglichen.
+- `tests/AuthTest.php`: Erstes Smoke-Test-Skelett für Auth + Listing/Auktion-Validierung (11/11 grün).
+- `includes/email.php`: Rate-Limiting für E-Mail-Versand (20 / Stunde), Absender-Domain-Validierung (`@ml-bets.com`), Log-Rotation und SMTP-Config-Schema-Doku.
+- Zustands-Option `poor` (PO) in `create.php`, `create-auction.php` und den `public/` Templates ergänzt.
+
+### Changed
+- `api/api.php` nutzt jetzt `includes/validation.php` statt eingebetteter Validierungsfunktionen.
+- `includes/db.php` unterstützt `TOXIC_DB_PATH`-Umgebungsvariable für isolierte Test-Datenbanken.
+- `SECURITY.md` aktualisiert: HTML-Formulare senden jetzt `X-CSRF-Token`, API nutzt Header-basiertes CSRF.
+
+### Security
+- E-Mail-Versand ablehnt ungültige Absender-Adressen und schreibt rotiertes Audit-Log (`data/email.log`).
+
+### Fixed
+- SECURITY.md behauptete fälschlich, HTML-Formulare senden kein CSRF-Token.
+
 ### Security
 - Session-Cookies werden mit `HttpOnly`, `SameSite=Lax` und bedingt `Secure` (bei HTTPS) gesetzt (`includes/auth.php`).
 - `session_regenerate_id(true)` bei Login, Registrierung und Logout gegen Session-Fixation.
