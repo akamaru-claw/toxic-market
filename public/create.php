@@ -13,6 +13,7 @@ if (!isLoggedIn()) {
 $db = getDB();
 $user = currentUser();
 $cards = $db->query('SELECT * FROM card_templates ORDER BY generation, id')->fetchAll();
+$csrfToken = generateCSRF();
 
 // Get current block height
 $ctx = stream_context_create(['http' => ['timeout' => 3]]);
@@ -148,6 +149,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
             <button type="submit" id="submit-btn" class="btn btn-primary btn-full" style="margin-top:24px;padding:14px;font-size:16px;">
                 🏷️ Angebot veröffentlichen
             </button>
+            <input type="hidden" id="csrf-token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <p id="submit-error" class="error hidden" style="margin-top:12px;"></p>
             <p id="submit-success" class="hidden" style="margin-top:12px;color:var(--accent);text-align:center;font-size:15px;"></p>
         </form>
@@ -272,7 +274,10 @@ $preselectedCard = intval($_GET['card'] ?? 0);
         try {
             const res = await fetch('/toxic-market/api/api.php?action=create_listing', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.getElementById('csrf-token').value
+                },
                 credentials: 'same-origin',
                 body: JSON.stringify(data)
             });

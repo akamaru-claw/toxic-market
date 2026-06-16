@@ -10,12 +10,38 @@ ini_set('error_log', $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/error.log')
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
+header('Access-Control-Expose-Headers: X-CSRF-Token');
 header('Content-Security-Policy: default-src \'none\'; frame-ancestors \'none\'; base-uri \'none\';');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
+
+/**
+ * Read CSRF token from request headers.
+ * Forms send it as X-CSRF-Token so we don't consume php://input early.
+ */
+function getRequestCSRF(): string {
+    $headers = getallheaders();
+    if (is_array($headers)) {
+        foreach ($headers as $name => $value) {
+            if (strtolower($name) === 'x-csrf-token') {
+                return trim((string)$value);
+            }
+        }
+    }
+    return '';
+}
+
+/**
+ * Require a valid CSRF token for state-changing actions.
+ */
+function requireCSRF(): void {
+    if (!verifyCSRF(getRequestCSRF())) {
+        throw new Exception('Invalid CSRF token', 403);
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -175,6 +201,22 @@ function validateAuctionPayload(array $data, PDO $db): array {
         throw new Exception('Invalid reserve price', 400);
     }
 
+    $condition = sanitizeUserText($data['condition'] ?? 'mint', 30);
+    $serial = sanitizeUserText($data['serial_number'] ?? '', 60);
+    $allowedConditions = ['mint', 'near_mint', 'excellent', 'good', 'played', 'poor'];
+    if (!in_array(strtolower($condition), $allowedConditions, true)) {
+        $condition = 'mint';
+    }
+
+    $proofUrl = isset($data['proof_image_url']) ? sanitizeUserText($data['proof_image_url'], 500) : '';
+    if ($proofUrl !== '' && strlen($proofUrl) > 500) {
+        throw new Exception('Invalid proof image URL', 400);
+    }
+    $proofBlockHeight = isset($data['proof_block_height']) ? (int)$data['proof_block_height'] : 0;
+    if ($proofBlockHeight < 0 || $proofBlockHeight > 9999999) {
+        $proofBlockHeight = 0;
+    }
+
     $durationHours = isset($data['duration_hours']) ? (int)$data['duration_hours'] : 0;
     if ($durationHours < 1 || $durationHours > 168) {
         throw new Exception('Auction duration must be between 1 and 168 hours', 400);
@@ -207,6 +249,10 @@ function validateAuctionPayload(array $data, PDO $db): array {
         'starting_price_sats' => $startingPrice,
         'reserve_price_sats' => $reserve,
         'duration_hours' => $durationHours,
+        'condition' => $condition,
+        'serial_number' => $serial,
+        'proof_image_url' => $proofUrl,
+        'proof_block_height' => $proofBlockHeight,
         'image_urls' => $imageUrls,
         'local_shipping_sats' => $localShipping,
         'intl_shipping_sats' => $intlShipping,
@@ -470,20 +516,22 @@ try {
         // === PLACEHOLDER: Create listing (needs auth) ===
         case 'create_listing':
             $user = requireAuth();
+            requireCSRF();
             if ($method !== 'POST') throw new Exception('POST required', 405);
             $data = json_decode(file_get_contents('php://input'), true);
-            
+
+            $validated = validateListingPayload($data, $db);
             $id = bin2hex(random_bytes(16));
             $stmt = $db->prepare('INSERT INTO listings (id, seller_id, card_template_id, title, description, price_sats, condition_text, serial_number, image_urls, proof_image_url, proof_block_height, local_shipping_sats, intl_shipping_sats) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             $stmt->execute([
-                $id, $user['id'], $data['card_template_id'] ?? null,
-                $data['title'], $data['description'] ?? '', $data['price_sats'],
-                $data['condition'] ?? 'mint', $data['serial_number'] ?? '',
-                json_encode($data['image_urls'] ?? []),
-                $data['proof_image_url'] ?? '', $data['proof_block_height'] ?? 0,
-                $data['local_shipping_sats'] ?? 0, $data['intl_shipping_sats'] ?? 0
+                $id, $user['id'], $validated['card_template_id'],
+                $validated['title'], $validated['description'], $validated['price_sats'],
+                $validated['condition'], $validated['serial_number'],
+                json_encode($validated['image_urls']),
+                $validated['proof_image_url'], $validated['proof_block_height'],
+                $validated['local_shipping_sats'], $validated['intl_shipping_sats']
             ]);
-            
+
             echo json_encode(['success' => true, 'id' => $id]);
             break;
 
@@ -637,6 +685,7 @@ try {
         // === CREATE AUCTION ===
         case 'create_auction':
             $user = requireAuth();
+            requireCSRF();
             if ($method !== 'POST') throw new Exception('POST required', 405);
             $data = json_decode(file_get_contents('php://input'), true);
 
@@ -658,10 +707,10 @@ try {
             $stmt->execute([
                 $id, $user['id'], $validated['card_template_id'],
                 $validated['title'], $validated['description'], $startingPrice,
-                $startingPrice, $validated['reserve_price_sats'], '',
+                $startingPrice, $validated['reserve_price_sats'], $validated['serial_number'],
                 json_encode($validated['image_urls']),
-                '', 0,
-                'mint',
+                $validated['proof_image_url'], $validated['proof_block_height'],
+                $validated['condition'],
                 $validated['local_shipping_sats'], $validated['intl_shipping_sats'],
                 $startsAt, $endsAt, 'active'
             ]);
@@ -991,7 +1040,7 @@ try {
             $token = $data['token'] ?? '';
             $newPassword = $data['password'] ?? '';
             
-            if (strlen($newPassword) < 6) throw new Exception('Passwort muss mindestens 6 Zeichen haben', 400);
+            if (strlen($newPassword) < 8) throw new Exception('Passwort muss mindestens 8 Zeichen haben', 400);
             
             if (!resetPassword($token, $newPassword)) {
                 throw new Exception('Token ungültig oder abgelaufen', 400);
@@ -1390,7 +1439,7 @@ try {
                 http_response_code(400);
                 exit;
             }
-            $filepath = $_SERVER['DOCUMENT_ROOT'] . '/../toxic-market/uploads/' . $filename;
+            $filepath = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/uploads/' . $filename;
             if (!file_exists($filepath)) {
                 http_response_code(404);
                 exit;

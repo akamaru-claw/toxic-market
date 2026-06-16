@@ -44,7 +44,7 @@
 - [x] Session-Cookie-Flags (`HttpOnly`, `Secure`, `SameSite=Lax`) serverseitig forcieren
 - [x] `session_regenerate_id(true)` bei Login/Register/Logout gegen Session-Fixation
 - [ ] Nostr-Login: Server-seitige Schnorr-Signatur-Verifikation implementieren
-- [ ] CSRF-Token auf jeder POST-Seite prüfen (aktuell nur API)
+- [x] CSRF-Token auf jeder POST-Seite prüfen (aktuell nur API)
 - [ ] Upload-Verzeichnis: MIME-Type-Check härten (Magick/Exif)
 - [ ] SQL-Injection-Audit (aktuell vorbereitete Statements)
 - [ ] Passwort-Reset per E-Mail aktivieren (SMTP/Postmark/SES)

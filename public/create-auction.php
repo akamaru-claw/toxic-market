@@ -11,6 +11,7 @@ if (!isLoggedIn()) { header('Location: /toxic-market/'); exit; }
 $db = getDB();
 $user = currentUser();
 $cards = $db->query('SELECT * FROM card_templates ORDER BY generation, id')->fetchAll();
+$csrfToken = generateCSRF();
 $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height', false, stream_context_create(['http' => ['timeout' => 3]])) ?: '?';
 ?>
 <!DOCTYPE html>
@@ -149,6 +150,7 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
             <button type="submit" id="submit-btn" class="btn btn-bitcoin btn-full" style="margin-top:24px;padding:16px;font-size:16px;font-weight:700;">
                 🔨 Auktion starten
             </button>
+            <input type="hidden" id="csrf-token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <p id="submit-error" class="error hidden" style="margin-top:12px;"></p>
             <p id="submit-success" class="hidden" style="margin-top:12px;color:var(--accent);text-align:center;font-size:15px;"></p>
         </form>
@@ -246,7 +248,10 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
         try {
             const res = await fetch('/toxic-market/api/api.php?action=create_auction', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.getElementById('csrf-token').value
+                },
                 credentials: 'same-origin',
                 body: JSON.stringify(data)
             });

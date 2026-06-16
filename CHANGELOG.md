@@ -17,6 +17,7 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 - Serverseitige Eingabevalidierung für `create_listing` und `create_auction` eingeführt: Preis-/Reserve-Grenzen, max. 5 Bild-URLs, Karten-ID-Prüfung, Versandbeträge, Startzeit-Validierung.
 - Security-Header via `.htaccess`: CSP, HSTS, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy, X-Content-Type-Options.
 - API-Responses erhalten eigene CSP-, NoSniff- und Frame-Options-Header.
+- CSRF-Token-Validierung für zustandsverändernde API-Endpunkte (`create_listing`, `create_auction`) eingeführt; Formulare senden `X-CSRF-Token`-Header (`create.php`, `create-auction.php` und `public/`).
 
 ### Added
 - Admin-Panel im Dashboard: LNBits-URL, API-Key, Fallback-Onchain-Adresse und Sandbox-Modus können direkt gespeichert werden.
@@ -33,7 +34,11 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 - Synchronisation von Mobile-Viewport-Änderungen zwischen `public/` und Root-PHP-Dateien.
 - `index.html` fehlte im Repo-Root; `public/index.html` wurde ins Root kopiert, damit `.htaccess` SPA-Routing funktioniert.
 - `create_auction` speichert nun zusätzlich `reserve_price_sats` und nutzt validierte Start-/Endzeiten.
+- `create_auction` speichert nun Zustand, Seriennummer und Besitznachweis-Bild korrekt (`validateAuctionPayload()` liefert diese Felder jetzt zurück).
+- `create_listing` nutzt nun vollständig `validateListingPayload()` statt roher Eingaben.
 - Session-Cookies erhielten keine Flags (`HttpOnly`/`Secure`/`SameSite`) und waren dadurch anfälliger für XSS/CSRF-Leakage.
+- Passwort-Reset im API-Endpunkt akzeptiert jetzt konsistent ≥8 Zeichen (vorher 6).
+- `serve_image` sucht Uploads jetzt unter `DOCUMENT_ROOT/toxic-market/uploads/` statt im falschen Parent-Verzeichnis.
 
 ## [v0.1.0] — 2026-06-15
 
