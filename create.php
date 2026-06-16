@@ -23,10 +23,13 @@ $preselectedCard = intval($_GET['card'] ?? 0);
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#08080f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Toxic Market — Angebot erstellen</title>
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
 </head>
 <body>
@@ -40,7 +43,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
                 <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
         </div>
-        <div id="mobile-nav" class="mobile-nav hidden">
+        <div id="mobile-nav" class="mobile-nav">
             <a href="/toxic-market/#cards">🃏 Karten</a>
             <a href="/toxic-market/#listings">🏷️ Kaufen</a>
             <a href="/toxic-market/#auctions">🔨 Auktionen</a>
@@ -65,7 +68,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
         <form id="create-listing" style="margin-top:20px;">
             <div class="form-group">
                 <label>Karte *</label>
-                <select id="card-id" required style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                <select id="card-id" required style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                     <option value="">— Karte auswählen —</option>
                     <?php foreach ($cards as $c): ?>
                     <?php $gn = [1=>'Genesis 2025',2=>'Zitadelle 2026',3=>'Remake EN'][$c['generation']] ?? ''; ?>
@@ -76,7 +79,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
 
             <div class="form-group">
                 <label>Titel *</label>
-                <input type="text" id="listing-title" required placeholder="z.B. Genesis #1 The Beginning - MINT" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                <input type="text" id="listing-title" required placeholder="z.B. Genesis #1 The Beginning - MINT" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
             </div>
 
             <div class="form-group">
@@ -87,11 +90,11 @@ $preselectedCard = intval($_GET['card'] ?? 0);
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
                 <div class="form-group">
                     <label>Preis (Sats) *</label>
-                    <input type="number" id="listing-price" required min="1" placeholder="5000" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="number" inputmode="numeric" pattern="[0-9]*" id="listing-price" required min="1" placeholder="5000" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                 </div>
                 <div class="form-group">
                     <label>Zustand</label>
-                    <select id="listing-condition" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <select id="listing-condition" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                         <option value="mint">Mint (M)</option>
                         <option value="near_mint">Near Mint (NM)</option>
                         <option value="excellent">Excellent (EX)</option>
@@ -101,18 +104,18 @@ $preselectedCard = intval($_GET['card'] ?? 0);
                 </div>
                 <div class="form-group">
                     <label>Seriennummer</label>
-                    <input type="text" id="listing-serial" placeholder="042/210" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="text" id="listing-serial" placeholder="042/210" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                 </div>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="form-group">
                     <label>Versand DE (Sats)</label>
-                    <input type="number" id="listing-local-ship" min="0" value="0" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="number" inputmode="numeric" pattern="[0-9]*" id="listing-local-ship" min="0" value="0" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                 </div>
                 <div class="form-group">
                     <label>Versand International (Sats)</label>
-                    <input type="number" id="listing-intl-ship" min="0" value="0" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="number" inputmode="numeric" pattern="[0-9]*" id="listing-intl-ship" min="0" value="0" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                 </div>
             </div>
 
@@ -138,7 +141,7 @@ $preselectedCard = intval($_GET['card'] ?? 0);
                 </div>
                 <div class="form-group" style="margin-top:12px;">
                     <label>Besitznachweis-Bild</label>
-                    <input type="file" id="proof-image" accept="image/jpeg,image/png,image/webp" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
+                    <input type="file" id="proof-image" accept="image/jpeg,image/png,image/webp" style="width:100%;padding:12px;font-size:16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;">
                 </div>
             </div>
 
@@ -156,8 +159,9 @@ $preselectedCard = intval($_GET['card'] ?? 0);
         </div>
     </footer>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/noble-curves-bundle.js?v=1"></script>
+    <script src="/toxic-market/js/nostr.js?v=4"></script>
+    <script src="/toxic-market/js/toxic.js?v=5"></script>
     <script>
     let uploadedImages = [];
 

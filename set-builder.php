@@ -48,11 +48,14 @@ $rarityColors = [
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#08080f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Set Builder — Toxic Market</title>
     <meta name="description" content="Welche Toxic Booster Karten fehlen dir? Sammel-Fortschritt, Checklist und Statistiken.">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
     <style>
         .set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
         @media (max-width: 480px) { .set-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
@@ -197,7 +200,7 @@ $rarityColors = [
                 <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
         </div>
-        <div id="mobile-nav" class="mobile-nav hidden">
+        <div id="mobile-nav" class="mobile-nav">
             <a href="/toxic-market/#cards">🃏 Karten</a>
             <a href="/toxic-market/set-builder" style="color:var(--accent);">📋 Set Builder</a>
             <a href="/toxic-market/#listings">🏷️ Kaufen</a>
@@ -348,8 +351,9 @@ $rarityColors = [
         </div>
     </footer>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/noble-curves-bundle.js?v=1"></script>
+    <script src="/toxic-market/js/nostr.js?v=4"></script>
+    <script src="/toxic-market/js/toxic.js?v=5"></script>
     <script>
     const OWNED_IDS = <?= json_encode(array_values($ownedIds)) ?>;
     const TOTAL_CARDS = <?= $totalCards ?>;

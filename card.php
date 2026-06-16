@@ -52,7 +52,10 @@ curl_close($ch);
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#08080f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title><?= htmlspecialchars($card['name']) ?> — Toxic Market</title>
     <meta name="description" content="<?= htmlspecialchars($gen_label) ?> · <?= $total_run ?> Stück<?= $holo_count > 0 ? ' · ' . $holo_count . '× Holo' : '' ?>">
     <meta property="og:title" content="<?= htmlspecialchars($card['name']) ?> — Toxic Market">
@@ -60,7 +63,7 @@ curl_close($ch);
     <meta property="og:image" content="https://ml-bets.com<?= $cardImageUrl ?>">
     <meta name="twitter:card" content="summary_large_image">
     <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
-    <link href="/toxic-market/css/toxic.css" rel="stylesheet">
+    <link href="/toxic-market/css/toxic.css?v=2" rel="stylesheet">
     <link href="/toxic-market/css/toxic-card.css" rel="stylesheet">
 </head>
 <body>
@@ -78,7 +81,7 @@ curl_close($ch);
                 <button class="hamburger" onclick="toggleMobileNav()">☰</button>
             </div>
         </div>
-        <div id="mobile-nav" class="mobile-nav hidden">
+        <div id="mobile-nav" class="mobile-nav">
             <a href="/toxic-market/#cards">🃏 Karten</a>
             <a href="/toxic-market/#listings">🏷️ Kaufen</a>
             <a href="/toxic-market/#auctions">🔨 Auktionen</a>
@@ -222,7 +225,8 @@ curl_close($ch);
         </div>
     </div>
 
-    <script src="/toxic-market/js/nostr.js"></script>
-    <script src="/toxic-market/js/toxic.js"></script>
+    <script src="/toxic-market/js/noble-curves-bundle.js?v=1"></script>
+    <script src="/toxic-market/js/nostr.js?v=4"></script>
+    <script src="/toxic-market/js/toxic.js?v=5"></script>
 </body>
 </html>
