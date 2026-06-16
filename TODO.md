@@ -5,17 +5,21 @@
 ## 🚨 Blocker / Hohe Priorität
 
 - [ ] **Strato-Passwort rotieren** (siehe GitHub Issue #3)
-  - Das SFTP-Passwort lag in Git-History. Muss in Strato-Kundencenter geändert werden.
+  - Das SFTP-Passwort lag in Git-History. Muss im Strato-Kundencenter geändert werden.
   - Lokale `STRATO_PASS` Umgebungsvariable aktualisieren.
 
 - [ ] **Echte E-Mail-Versand für Passwort-Reset** (siehe GitHub Issue #2)
   - Aktuell nur Stub in `includes/email.php`.
   - Optionen: Strato-SMTP, PHPMailer, Postmark, SendGrid.
-  - Rate-Limiting implementieren.
+  - Rate-Limiting ist implementiert (2026-06-16).
+
+- [ ] **LNBits Live-Config auf Server eintragen**
+  - Admin-Panel im Dashboard ist implementiert (2026-06-16).
+  - Nach Deploy: URL, API-Key und Fallback-Onchain-Adresse eintragen und Verbindung testen.
+  - `data/`-Verzeichnis-Berechtigungen auf 0600/0750 prüfen.
 
 ## 🚧 Zahlungen & Auktionen
 
-- [ ] LNBits Live-Config auf Server eintragen (via Dashboard → Admin Payment Config)
 - [ ] Zahlungsabwicklung End-to-End testen (Listing-Kauf, Auktions-Deposit)
 - [ ] Auktions-Ende: Gewinner-Benachrichtigung + Zahlungsaufforderung
 - [ ] Rückerstattung von Bid-Deposits für Verlierer
@@ -31,12 +35,15 @@
 
 ## 🔒 Security
 
+- [x] IP-basiertes Rate-Limiting für Login, Registrierung, Passwort-Reset (`includes/rate_limit.php`)
+- [x] Admin-Check über `isAdmin()` statt hartkodierter E-Mail
+- [x] `.gitignore` für `data/`, `uploads/`, `.env`, Logs
 - [ ] Nostr-Login: Server-seitige Schnorr-Signatur-Verifikation implementieren
 - [ ] CSRF-Token auf jeder POST-Seite prüfen (aktuell nur API)
 - [ ] Passwort-Richtlinie verschärfen (mindestens 8 Zeichen, Sonderzeichen)
-- [ ] Rate-Limiting für Login / Registrierung / Passwort-Reset
 - [ ] SQL-Injection-Audit (aktuell vorbereitete Statements)
 - [ ] Upload-Verzeichnis: MIME-Type-Check härten (Magick/Exif)
+- [ ] Content-Security-Policy-Header hinzufügen
 
 ## 🧪 Tests
 
@@ -47,7 +54,8 @@
 ## 📚 Dokumentation
 
 - [ ] Public REST API-Doku (OpenAPI / Postman Collection)
-- [ ] Admin-Handbuch für Payment-Config
+- [x] Admin-Handbuch für Payment-Config (im Dashboard integriert)
+- [x] `SECURITY.md` und `CHANGELOG.md` gepflegt
 - [ ] Contributor-Guide
 
 ## 🧹 Tech Debt

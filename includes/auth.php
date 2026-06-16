@@ -31,6 +31,19 @@ function requireAuth(): array {
     return currentUser();
 }
 
+function isAdmin(?array $user = null): bool {
+    if ($user === null) $user = currentUser();
+    if (!$user) return false;
+    $configFile = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/admin_users.json';
+    if (!file_exists($configFile)) {
+        // Default admin fallback: original project admin email
+        return ($user['email'] === 'akamaru.claw@gmx.de');
+    }
+    $admins = json_decode(file_get_contents($configFile), true);
+    if (!is_array($admins)) return false;
+    return in_array($user['email'], $admins, true);
+}
+
 function loginWithEmail(string $email, string $password): ?array {
     $db = getDB();
     $stmt = $db->prepare('SELECT * FROM users WHERE email = ?');

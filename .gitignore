@@ -1,0 +1,30 @@
+# Toxic Market — Git ignore
+
+# Runtime data (contains SQLite DB, payment config, API keys)
+/data/*
+!/data/.gitkeep
+!/data/.htaccess
+
+# User uploads
+/uploads/*
+!/uploads/.htaccess
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+
+# Runtime / cache
+*.log
+/data/error.log
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# Composer / Node (if added later)
+/vendor/
+/node_modules/

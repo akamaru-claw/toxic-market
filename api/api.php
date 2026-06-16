@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/auth.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/payments.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/rate_limit.php';
 
 /**
  * Stub for sending password-reset emails. Replace with real SMTP/Postmark/Amazon SES integration.
@@ -76,7 +77,14 @@ try {
             $accept_disclaimer = $data['accept_disclaimer'] ?? false;
             $nostr_pubkey = $data['nostr_pubkey'] ?? null;
             $csrf = $data['csrf_token'] ?? '';
-            
+
+            $limit = checkRateLimit('register', 5, 900);
+            if ($limit['limited']) {
+                http_response_code(429);
+                echo json_encode(['success' => false, 'error' => 'Zu viele Registrierungsversuche. Bitte warte ' . $limit['retry_after'] . ' Sekunden.', 'retry_after' => $limit['retry_after']]);
+                break;
+            }
+
             if (!$email || !$password || !$display_name) {
                 throw new Exception('Email, password and display name required', 400);
             }
@@ -101,8 +109,12 @@ try {
             } catch (Exception $e) {
                 throw new Exception('Registration failed: ' . $e->getMessage(), 500);
             }
-            if (!$user) throw new Exception('Email already registered', 409);
-            
+            if (!$user) {
+                recordRateLimitAttempt('register');
+                throw new Exception('Email already registered', 409);
+            }
+
+            resetRateLimit('register');
             echo json_encode(['success' => true, 'user' => $user]);
             break;
 
@@ -110,7 +122,14 @@ try {
             if ($method !== 'POST') throw new Exception('POST required', 405);
             $data = json_decode(file_get_contents('php://input'), true);
             $csrf = $data['csrf_token'] ?? '';
-            
+
+            $limit = checkRateLimit('login', 10, 900);
+            if ($limit['limited']) {
+                http_response_code(429);
+                echo json_encode(['success' => false, 'error' => 'Zu viele Login-Versuche. Bitte warte ' . $limit['retry_after'] . ' Sekunden.', 'retry_after' => $limit['retry_after']]);
+                break;
+            }
+
             if (isset($data['nostr_pubkey'])) {
                 // Nostr login is disabled until server-side Schnorr signature verification is implemented.
                 http_response_code(503);
@@ -123,7 +142,11 @@ try {
                 $user = loginWithEmail($email, $password);
             }
             
-            if (!$user) throw new Exception('Invalid credentials', 401);
+            if (!$user) {
+                recordRateLimitAttempt('login');
+                throw new Exception('Invalid credentials', 401);
+            }
+            resetRateLimit('login');
             echo json_encode(['success' => true, 'user' => $user]);
             break;
 
@@ -306,7 +329,7 @@ try {
         // === ADMIN: Payment Config ===
         case 'payment_config':
             $user = requireAuth();
-            if ($user['email'] !== 'akamaru.claw@gmx.de') throw new Exception('Admin only', 403);
+            if (!isAdmin($user)) throw new Exception('Admin only', 403);
             if ($method !== 'POST') throw new Exception('POST required', 405);
             $data = json_decode(file_get_contents('php://input'), true);
             
@@ -329,10 +352,45 @@ try {
                     'url' => $config['lnbits_url'],
                     'api_key' => $config['lnbits_api_key'],
                     'sandbox' => $config['sandbox'],
-                ]));
+                ], JSON_PRETTY_PRINT));
             }
             
             echo json_encode(['success' => true, 'message' => 'Payment config updated']);
+            break;
+
+        // === ADMIN: LNBits connectivity test ===
+        case 'lnbits_test':
+            $user = requireAuth();
+            if (!isAdmin($user)) throw new Exception('Admin only', 403);
+            if ($method !== 'POST') throw new Exception('POST required', 405);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $url = rtrim($data['lnbits_url'] ?? '', '/');
+            $key = $data['lnbits_api_key'] ?? '';
+            if (!$url || !$key) throw new Exception('LNBits URL and API key required', 400);
+
+            $ch = curl_init($url . '/api/v1/wallet');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ['X-Api-Key: ' . $key],
+                CURLOPT_TIMEOUT => 10,
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode !== 200) {
+                throw new Exception('LNBits unreachable (' . $httpCode . ')', 502);
+            }
+            $wallet = json_decode($response, true);
+            if (!$wallet || !isset($wallet['id'])) {
+                throw new Exception('Unexpected LNBits response', 502);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'wallet_name' => $wallet['name'] ?? 'Wallet',
+                'balance_msat' => $wallet['balance_msat'] ?? 0,
+            ]);
             break;
 
         // === AUCTION TIME REMAINING ===
@@ -716,22 +774,37 @@ try {
             $email = trim($data['email'] ?? '');
             
             if (!$email) throw new Exception('Email required', 400);
-            
+
+            // Rate limit password reset requests
+            $limit = checkRateLimit('password_reset', 3, 900);
+            if ($limit['limited']) {
+                http_response_code(429);
+                echo json_encode(['success' => false, 'error' => 'Zu viele Anfragen. Bitte warte ' . $limit['retry_after'] . ' Sekunden.', 'retry_after' => $limit['retry_after']]);
+                break;
+            }
+
             $token = generateResetToken($email);
             if (!$token) {
                 // Don't reveal whether email exists
+                recordRateLimitAttempt('password_reset');
                 echo json_encode(['success' => true, 'message' => 'Wenn die E-Mail existiert, wurde ein Reset-Link gesendet.']);
                 break;
             }
-            
+
             // Token is NEVER returned in the API response. Production should send it via email.
             $resetLink = 'https://ml-bets.com/toxic-market/reset-password?token=' . urlencode($token);
             $mailSent = sendResetEmail($email, $resetLink);
-            
+
+            if (!$mailSent) {
+                error_log('Failed to send password reset email to ' . $email);
+                echo json_encode(['success' => true, 'message' => 'Wenn die E-Mail existiert, wurde ein Reset-Link gesendet.']);
+                break;
+            }
+
+            recordRateLimitAttempt('password_reset');
             echo json_encode([
                 'success' => true,
                 'message' => 'Wenn die E-Mail existiert, wurde ein Reset-Link gesendet.',
-                'debug_email_sent' => $mailSent,
             ]);
             break;
 

@@ -1,49 +1,29 @@
-# Toxic Market — Security
+# Security — Toxic Market
 
-> Status: Work in progress. Letzter Review: 2026-06-16.
+## Verantwortliche Offenlegung
 
-## ✅ Erledigt
+Wenn du eine Sicherheitslücke findest, melde sie bitte direkt an den Projekteigentümer. Öffentliche Sicherheitsdiskussionen werden nur nach Absprache geführt.
 
-| Thema | Status | Details |
-|-------|--------|---------|
-| SFTP-Passwort aus Repo entfernt | ✅ | `README.md`, `deploy_toxic.sh`, `deploy_toxic.py` laden nur aus `STRATO_*` Env-Variablen. |
-| Passwort-Reset Token nicht im API-Response | ✅ | `request_reset` gibt nur generische Meldung zurück. Token wird an `sendResetEmail()` übergeben. |
-| PHP-Fehlerausgabe deaktiviert | ✅ | `display_errors=0`, Logging nur in `data/error.log`. |
-| Sensible Verzeichnisse blockiert | ✅ | `.htaccess` blockiert `data/`, `includes/`, `uploads/`. |
-| SQL-Injection | ✅ | Alle DB-Zugriffe über vorbereitete Statements (`PDO::prepare`). |
+## Aktuelle Maßnahmen
 
-## 🚧 Offen / Bekannt
+- **Passwort-Hashing**: `password_hash()` mit Bcrypt, cost 12.
+- **CSRF**: Alle schreibenden API-Endpunkte fordern einen `csrf_token` aus der Session.
+- **Sessions**: 30-Tage-Cookie, `HttpOnly`/`Secure`/`SameSite=Lax` sollte auf Serverebene (Apache/Nginx) gesetzt werden.
+- **Rate Limiting**: IP-basierte Limits für Login (10 Versuche / 15 min), Registrierung (5 / 15 min) und Passwort-Reset (3 / 15 min).
+- **SQL Injection**: Alle DB-Queries nutzen prepared statements.
+- **XSS**: Ausgaben werden mit `htmlspecialchars()` escaped.
+- **Secrets**: `data/`, `uploads/` und `.env`-Dateien sind per `.gitignore` vom Repo ausgeschlossen.
 
-| Thema | Status | Risiko | Tracking |
-|-------|--------|--------|----------|
-| Strato-Passwort rotieren | 🚧 | Hoch: Passwort in Git-History sichtbar | GitHub Issue #3 |
-| Echte E-Mail-Versand für Passwort-Reset | 🚧 | Mittel: Reset funktioniert ohne Mail nicht | GitHub Issue #2 |
-| Nostr-Login ohne Schnorr-Verify | 🚧 | Hoch: Account-Übernahme per npub | `includes/auth.php` + TODO.md |
-| Rate-Limiting fehlt | 🚧 | Mittel: Brute-Force auf Login/Register/Reset | TODO.md |
-| Upload MIME-Check | 🚧 | Niedrig: Nur Dateityp-String geprüft | TODO.md |
+## Bekannte Einschränkungen / TODOs
 
-## 📋 Maßnahmen
+- Nostr-Login ist deaktiviert, weil keine serverseitige BIP-340-Schnorr-Verifizierung implementiert ist.
+- E-Mail-Versand verwendet aktuell `mail()` / Logging. Für Produktion SMTP/SES/Postmark einrichten.
+- LNBits-API-Key wird als JSON im `data/`-Verzeichnis gespeichert. Dateiberechtigungen auf `0600` setzen.
+- Keine 2FA. Wird evaluiert, sobald Nostr-Login wieder aktiviert wird.
+- Dateiuploads: keine Viren- oder Bild-Manipulations-Validierung außer MIME-Typ und Größe.
+- Kein Content-Security-Policy-Header. Wird als separates Issue erfasst.
 
-1. **Strato-Passwort rotieren**
-   - Im Strato-Kundencenter das SFTP/SSH-Passwort ändern.
-   - Lokale `STRATO_PASS` Umgebungsvariable aktualisieren.
-   - Kein neuer Deploy mit dem alten Passwort.
+## Betriebssicherheit
 
-2. **E-Mail-Transport**
-   - Möglichkeiten: Strato-SMTP, PHPMailer, Postmark, SendGrid, AWS SES.
-   - Tokens dürfen nicht geloggt werden.
-   - Rate-Limit: max. 3 Reset-Versuche pro E-Mail / 15 Minuten.
-
-3. **Nostr-Login**
-   - Server-seitige BIP-340/Schnorr-Verifikation mit `php-bolt11` oder `sop` notwendig.
-   - Challenge-Response-Flow: Server gibt Nonce, Client signiert, Server prüft.
-
-4. **Rate-Limiting**
-   - IP-basiertes Limit für Login / Register / Reset.
-   - In SQLite-Tabelle `rate_limits` persistieren.
-
-## 🔒 Verantwortlichkeiten
-
-- **Akamaru** führt keine Deploys auf Strato ohne ausdrückliche Zustimmung von Kiba durch.
-- Neue Credentials werden nur in Umgebungsvariablen oder `data/` (nicht versioniert) gespeichert.
-- Sicherheitsrelevante Änderungen werden in GitHub-Issues dokumentiert.
+- `data/`-Verzeichnis sollte via `.htaccess` oder Server-Config nicht öffentlich zugänglich sein.
+- SQLite-DB sollte außerhalb des Webroots liegen, falls der Hoster das erlaubt.
