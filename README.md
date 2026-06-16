@@ -160,3 +160,4 @@ python3 deploy_toxic.py --dry-run
 
 - **Toxic Booster Tracker**: https://ml-bets.com/toxic-booster/
 - **GitHub**: https://github.com/akamaru-claw/toxic-market
+- **API-Dokumentation**: [API.md](./API.md) · [OpenAPI](./openapi.yaml) · [Postman Collection](./Toxic_Market_API.postman_collection.json)

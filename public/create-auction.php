@@ -101,6 +101,7 @@ $blockHeight = @file_get_contents('https://mempool.space/api/blocks/tip/height',
                         <option value="excellent">Excellent (EX)</option>
                         <option value="good">Good (G)</option>
                         <option value="played">Played (P)</option>
+                        <option value="poor">Poor (PO)</option>
                     </select>
                 </div>
                 <div class="form-group">

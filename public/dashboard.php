@@ -44,6 +44,14 @@ $stmt4 = $db->prepare('SELECT l.*, ct.name as card_name, u.display_name as buyer
     ORDER BY l.sold_at DESC LIMIT 20');
 $stmt4->execute([$user['id']]);
 $mySales = $stmt4->fetchAll();
+
+// Load payment config if admin
+$isAdmin = isAdmin($user);
+$paymentConfig = [];
+if ($isAdmin) {
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/payments.php';
+    $paymentConfig = getPaymentConfig();
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -151,6 +159,36 @@ $mySales = $stmt4->fetchAll();
             <a href="/toxic-market/create" class="btn btn-primary">🏷️ Angebot erstellen</a>
             <a href="/toxic-market/create-auction" class="btn btn-outline">🔨 Auktion starten</a>
         </div>
+
+        <?php if ($isAdmin): ?>
+        <!-- Admin: Payment Configuration -->
+        <div style="margin-bottom:40px;" id="admin-payment-panel">
+            <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:16px;">🔐 Admin: Zahlungs-Konfiguration</h2>
+            <div style="background:var(--card-glass);border:1px solid var(--border);border-radius:12px;padding:20px;">
+                <p style="color:var(--text-muted);font-size:13px;margin-top:0;">Hier werden LNBits-URL, API-Key und Fallback-Onchain-Adresse gespeichert. Diese Daten landen nur in <code>data/payments_config.json</code> (nicht im Git-Repo) und müssen nach einem Deploy manuell neu gesetzt werden.</p>
+                
+                <div style="display:flex;flex-direction:column;gap:14px;max-width:600px;">
+                    <label style="font-size:13px;color:var(--text-dim);">LNBits URL
+                        <input type="url" id="cfg-lnbits-url" value="<?= htmlspecialchars($paymentConfig['lnbits_url'] ?? '') ?>" placeholder="https://..." style="margin-top:6px;width:100%;padding:10px 14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-family:inherit;">
+                    </label>
+                    <label style="font-size:13px;color:var(--text-dim);">LNBits API Key
+                        <input type="password" id="cfg-lnbits-key" value="<?= htmlspecialchars($paymentConfig['lnbits_api_key'] ?? '') ?>" placeholder="..." style="margin-top:6px;width:100%;padding:10px 14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-family:inherit;">
+                    </label>
+                    <label style="font-size:13px;color:var(--text-dim);">Fallback Onchain-Adresse
+                        <input type="text" id="cfg-onchain" value="<?= htmlspecialchars($paymentConfig['onchain_address'] ?? '') ?>" placeholder="bc1..." style="margin-top:6px;width:100%;padding:10px 14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-family:inherit;">
+                    </label>
+                    <label style="font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" id="cfg-sandbox" <?= !empty($paymentConfig['sandbox']) ? 'checked' : '' ?> Sandbox-Modus
+                    </label>
+                    <div style="display:flex;gap:10px;margin-top:8px;">
+                        <button class="btn btn-primary" onclick="savePaymentConfig()">Speichern</button>
+                        <button class="btn btn-sm btn-outline" onclick="testLNBitsConnection()">Verbindung testen</button>
+                    </div>
+                    <div id="payment-cfg-msg" style="font-size:13px;margin-top:8px;min-height:20px;"></div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- My Listings -->
         <div style="margin-bottom:40px;">
@@ -314,6 +352,51 @@ $mySales = $stmt4->fetchAll();
         } catch(e) {
             toast('Server-Fehler', 'error');
             btn.disabled = false;
+        }
+    }
+
+    async function savePaymentConfig() {
+        const url = document.getElementById('cfg-lnbits-url')?.value.trim() || '';
+        const key = document.getElementById('cfg-lnbits-key')?.value.trim() || '';
+        const onchain = document.getElementById('cfg-onchain')?.value.trim() || '';
+        const sandbox = document.getElementById('cfg-sandbox')?.checked ?? true;
+        const msg = document.getElementById('payment-cfg-msg');
+        if (msg) msg.textContent = 'Speichern...';
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=payment_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ lnbits_url: url, lnbits_api_key: key, onchain_address: onchain, sandbox: sandbox })
+            });
+            const data = await res.json();
+            if (msg) msg.textContent = data.success ? '✅ Gespeichert.' : 'Fehler: ' + (data.error || 'Unbekannt');
+            if (data.success) toast('Zahlungs-Konfiguration gespeichert', 'success');
+        } catch(e) {
+            if (msg) msg.textContent = 'Netzwerkfehler.';
+        }
+    }
+
+    async function testLNBitsConnection() {
+        const url = document.getElementById('cfg-lnbits-url')?.value.trim() || '';
+        const key = document.getElementById('cfg-lnbits-key')?.value.trim() || '';
+        const msg = document.getElementById('payment-cfg-msg');
+        if (!url || !key) {
+            if (msg) msg.textContent = 'URL und Key eingeben.';
+            return;
+        }
+        if (msg) msg.textContent = 'Teste Verbindung...';
+        try {
+            const res = await fetch('/toxic-market/api/api.php?action=lnbits_test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ lnbits_url: url, lnbits_api_key: key })
+            });
+            const data = await res.json();
+            if (msg) msg.textContent = data.success ? ('✅ LNBits erreichbar' + (data.wallet_name ? ' (' + data.wallet_name + ')' : '')) : '❌ ' + (data.error || 'Fehlgeschlagen');
+        } catch(e) {
+            if (msg) msg.textContent = 'Netzwerkfehler beim Test.';
         }
     }
 

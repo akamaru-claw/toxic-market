@@ -9,12 +9,14 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 - `includes/email.php`: Echter SMTP/SSL/TLS-Versand via PHPMailer; `data/email_config.json` oder Umgebungsvariablen (`TOXIC_SMTP_*`) aktivieren ihn. Ohne Config bleibt `mail()`-Fallback erhalten.
 - `api/api.php`: Passwort-Reset-E-Mails werden per `sendEmail()` verschickt (HTML-Template, 60-Minuten-Link), statt nur ins Server-Log geschrieben.
 - `openapi.yaml`: Erste öffentliche OpenAPI 3.0 Spezifikation für alle v1-Endpunkte (Auth, Cards, Listings, Auctions, Payments, Admin, Uploads).
-- Smoke-Tests für E-Mail-Validierung und SMTP-Config-Overrides in `tests/AuthTest.php`.
+- `Toxic_Market_API.postman_collection.json`: Postman v2.1 Collection aus OpenAPI generiert.
+- `tests/AuthTest.php`: Smoke-Tests für E-Mail-Validierung und SMTP-Config-Overrides.
 
 ### Changed
 - `includes/email.php`: `getEmailConfig()` liest jetzt auch `TOXIC_SMTP_HOST`, `TOXIC_SMTP_PORT`, `TOXIC_SMTP_USER`, `TOXIC_SMTP_PASS`, `TOXIC_SMTP_SECURE` und `TOXIC_MAIL_FROM` aus der Umgebung.
-- `SECURITY.md`: E-Mail-Transport als implementiert dokumentiert.
-- `TODO.md`: Abgeschlossene Punkte für Passwort-Reset-E-Mail, OpenAPI-Spec und erweiterte Smoke-Tests markiert.
+- `README.md`: Verlinkung zu API.md, OpenAPI und Postman-Collection ergänzt.
+- `TODO.md`: Abgeschlossene Punkte für Passwort-Reset-E-Mail, OpenAPI-Spec, Postman-Collection und Public/Root-Sync markiert.
+- `public/`-Templates erneut mit Root-PHP-Dateien synchronisiert (`create.php`, `create-auction.php`, `dashboard.php`, `index.html`, `404.html`, `sitemap.php` sowie Markdown-Doku).
 
 ### Security
 - Passwort-Reset-Link wird nicht mehr ins Server-Fehlerlog geschrieben, sondern per E-Mail übertragen.

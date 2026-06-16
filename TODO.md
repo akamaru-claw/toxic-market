@@ -9,6 +9,7 @@
   - Lokale `STRATO_PASS` Umgebungsvariable aktualisieren.
 
 - [x] **Echte E-Mail-Versand für Passwort-Reset** (siehe GitHub Issue #2)
+  - Implementiert in `includes/email.php` + PHPMailer.
   - PHPMailer 6.9.1 eingebunden unter `includes/PHPMailer/`.
   - `includes/email.php` unterstützt jetzt SMTP/SSL/TLS mit Config-Datei oder Umgebungsvariablen.
   - `api/api.php` verschickt Passwort-Reset-E-Mails (sobald `data/email_config.json` vorhanden ist).
@@ -51,6 +52,7 @@
 
 - [x] Smoke-Tests für Auth + Validierung (`tests/AuthTest.php`)
 - [x] Smoke-Tests für E-Mail-Validierung + SMTP-Config-Overrides (`tests/AuthTest.php`)
+- [x] API-Smoke-Tests: Register, Login, Listing erstellen, Logout (`tests/ApiSmokeTest.php`)
 - [ ] PHP-Unit-Tests für Auth + DB-Migrationen
 - [ ] API-Integrationstests (Status, Register, Login, Listing erstellen)
 - [ ] Frontend-Tests für Kritische Pfade (Login → Listing erstellen)
@@ -59,7 +61,7 @@
 
 - [x] `API.md`: Interne REST-API-Dokumentation
 - [x] `openapi.yaml`: Public OpenAPI 3.0 Spec
-- [ ] Postman Collection generieren
+- [x] Postman Collection generieren (`Toxic_Market_API.postman_collection.json`)
 - [x] Admin-Handbuch für Payment-Config (im Dashboard integriert)
 - [x] `SECURITY.md` und `CHANGELOG.md` gepflegt
 - [ ] Contributor-Guide
@@ -70,7 +72,7 @@
 - [x] Deploy-Scripte an aktuelle Struktur anpassen
 - [x] `index.html` aus `public/` ins Repo-Root kopiert (für SPA-Routing via `.htaccess`)
 - [x] Validierungsfunktionen aus `api/api.php` in `includes/validation.php` extrahiert
-- [ ] HTML-Vorlagen in `public/` mit Root-PHP-Dateien synchron halten (Build-Schritt?)
+- [x] HTML-Vorlagen in `public/` mit Root-PHP-Dateien synchron halten (manueller Sync via `deploy_toxic.sh`)
 - [ ] `app.css`, `app.v2.css`, `card.css` etc. — alte Dateien bereinigen
 - [ ] `app.js`, `app.v2.js`, `nostr.js` — Doppelungen auflösen
 
