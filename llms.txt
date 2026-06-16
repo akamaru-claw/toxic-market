@@ -1,0 +1,115 @@
+# Toxic Market — AI Agent Discovery
+# https://ml-bets.com/toxic-market/
+
+## About
+Toxic Market is a P2P marketplace for MX12ART Toxic Booster collectible trading cards — Bitcoin-native physical cards created by artist MX12ART. No custody, no escrow. Buyers and sellers trade directly.
+
+## Cards
+- Genesis Edition 2025 (DE): 21 designs × 210 prints, #21/210 is Holo
+- Zitadelle Edition 2026 (DE): 21 designs × 210 prints, #1, #21, #210 are Holo
+- Genesis Remake (EN): 21 designs × 35 prints each
+- Artist: MX12ART (@mx12art)
+- Total: 63 unique templates
+
+## Features
+- Fixed-price listings with Lightning/Onchain payment
+- Timed auctions with bid deposit system (5%, min 1,000 sats)
+- Proof of Ownership via Bitcoin block height
+- Nostr + Email authentication
+- Image uploads for listings
+- Set Builder (collection tracker with export)
+- Seller profiles
+- In-app notifications (outbid, sale, purchase)
+- Transaction history
+- Live auction countdown timers
+- Mobile-responsive
+
+## API
+Base URL: /toxic-market/api/api.php
+Public endpoints:
+  - ?action=cards[&generation=N][&search=...] — All card templates, optional filter
+  - ?action=card&id=X — Single card detail with listings + auctions
+  - ?action=listings[&generation=N][&sort=newest|price_low|price_high][&cursor=...][&limit=N] — Active listings
+  - ?action=auctions — Active auctions
+  - ?action=listing&id=X — Listing detail
+  - ?action=auction&id=X — Auction detail with bids
+  - ?action=bids&auction_id=X — Bids for auction
+  - ?action=seller&id=X — Seller profile
+  - ?action=btc_price — Current BTC/EUR/USD price
+  - ?action=current_block — Current Bitcoin block height + hash
+  - ?action=auction_time&id=X — Auction time remaining
+  - ?action=categories — SatStash-compatible categories
+
+Auth required:
+  - ?action=register — Create account (email, password, display_name, nostr_pubkey optional)
+  - ?action=login — Login (email+password or nostr_pubkey)
+  - ?action=logout — End session
+  - ?action=status — Current auth status + CSRF token
+  - ?action=upload_image — Image upload (JPG/PNG/WebP, max 5MB)
+  - ?action=create_listing — Create fixed-price listing
+  - ?action=create_auction — Create timed auction
+  - ?action=update_listing — Update own listing
+  - ?action=delete_listing — Delete own listing
+  - ?action=place_bid — Place bid on auction (simple)
+  - ?action=bid_with_deposit — Place bid with Lightning deposit
+  - ?action=check_bid_deposit&bid_id=X — Check bid deposit status
+  - ?action=create_purchase_invoice — Create purchase Lightning invoice
+  - ?action=create_invoice — Create generic Lightning invoice
+  - ?action=check_payment&transaction_id=X — Check payment status
+  - ?action=onchain_address — Get on-chain payment address
+  - ?action=toggle_collection — Toggle card in collection
+  - ?action=my_collection — Get user's collection
+  - ?action=my_listings — Get user's listings
+  - ?action=my_transactions[&type=purchase|bid_deposit] — User transaction history
+  - ?action=update_profile — Update display name + bio
+  - ?action=notifications[&unread_only=1][&limit=N] — Get notifications
+  - ?action=mark_notifications_read — Mark notifications as read (id or all)
+  - ?action=mark_sold — Mark listing as sold
+  - ?action=payment_config — Admin: Get/set LNBits + onchain config (admin only)
+
+## Payment Flow
+### Listing Purchase
+1. Buyer clicks "Jetzt kaufen" → create_purchase_invoice or create_invoice
+2. LNBits invoice created → QR code + invoice text shown
+3. Buyer pays invoice → check_payment polls until settled
+4. Listing marked as sold → notifications sent
+
+### Auction Bid Deposit
+1. Bidder enters amount → bid_with_deposit API
+2. LNBits deposit invoice created (5% of bid, min 1,000 sats)
+3. Bidder pays deposit → check_payment confirms
+4. Previous highest bidder gets outbid notification
+5. On auction end: winner pays full price, losers get deposit back
+
+### Manual / No LNBits
+- If LNBits not configured, transactions created with status='manual'
+- Buyers/sellers coordinate payment directly (P2P)
+
+## Payment Configuration (Admin)
+- Admin email: akamaru.claw@gmx.de
+- Config stored in /toxic-market/data/payments_config.json
+- LNBits config in /toxic-market/data/lnbits_config.json
+- On-chain address for fallback payments
+
+## Important
+- No custody: Toxic Market never holds funds
+- No escrow: Bid deposits are Lightning invoices, not held by platform
+- Proof of Ownership uses Bitcoin block height for timestamp verification
+- CSRF token required for register/login (from /status endpoint)
+- All auth-required endpoints use session cookies
+
+## Pages
+- /toxic-market/ — Homepage (cards, listings, auctions)
+- /toxic-market/listing/X — Listing detail
+- /toxic-market/auction/X — Auction detail (live countdown, bid deposit)
+- /toxic-market/seller/X — Seller profile
+- /toxic-market/create — Create listing
+- /toxic-market/create-auction — Create auction
+- /toxic-market/set-builder — Collection tracker
+- /toxic-market/dashboard — User dashboard (listings, purchases, transactions, notifications)
+
+## Links
+- Website: https://ml-bets.com/toxic-market/
+- GitHub: https://github.com/akamaru-claw/toxic-market
+- Artist: https://twitter.com/mx12art
+- Community: Einundzwanzig / Zitadelle
