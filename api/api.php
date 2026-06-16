@@ -12,6 +12,10 @@ header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Content-Security-Policy: default-src \'none\'; frame-ancestors \'none\'; base-uri \'none\';');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -52,6 +56,163 @@ function autoEndExpiredAuctions(PDO $db): void {
     }
 }
 
+/**
+ * Sanitize user-facing text: strip tags, trim whitespace, collapse multiple spaces.
+ */
+function sanitizeUserText(string $text, int $maxLength = 255): string {
+    $text = trim($text);
+    $text = strip_tags($text);
+    $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+    return mb_substr($text, 0, $maxLength);
+}
+
+/**
+ * Validate a listing payload before insert.
+ * Returns a normalized data array or throws Exception on invalid input.
+ */
+function validateListingPayload(array $data, PDO $db): array {
+    $title = sanitizeUserText($data['title'] ?? '', 120);
+    if ($title === '') {
+        throw new Exception('Title is required', 400);
+    }
+
+    $cardTemplateId = isset($data['card_template_id']) ? (int)$data['card_template_id'] : 0;
+    if ($cardTemplateId <= 0) {
+        throw new Exception('Valid card template ID required', 400);
+    }
+    $exists = $db->prepare('SELECT 1 FROM card_templates WHERE id = ?');
+    $exists->execute([$cardTemplateId]);
+    if (!$exists->fetch()) {
+        throw new Exception('Card template not found', 404);
+    }
+
+    $priceSats = isset($data['price_sats']) ? (int)$data['price_sats'] : -1;
+    if ($priceSats < 1 || $priceSats > 2100000000000000) {
+        throw new Exception('Price must be between 1 and 21M BTC in sats', 400);
+    }
+
+    $description = sanitizeUserText($data['description'] ?? '', 2000);
+    $condition = sanitizeUserText($data['condition'] ?? 'mint', 30);
+    $serial = sanitizeUserText($data['serial_number'] ?? '', 60);
+
+    $allowedConditions = ['mint', 'near_mint', 'excellent', 'good', 'played', 'poor'];
+    if (!in_array(strtolower($condition), $allowedConditions, true)) {
+        $condition = 'mint';
+    }
+
+    $imageUrls = $data['image_urls'] ?? [];
+    if (!is_array($imageUrls)) {
+        $imageUrls = [];
+    }
+    $imageUrls = array_slice($imageUrls, 0, 5);
+    foreach ($imageUrls as $url) {
+        if (!is_string($url) || strlen($url) > 500) {
+            throw new Exception('Invalid image URL', 400);
+        }
+    }
+
+    $proofUrl = isset($data['proof_image_url']) ? sanitizeUserText($data['proof_image_url'], 500) : '';
+    if ($proofUrl !== '' && strlen($proofUrl) > 500) {
+        throw new Exception('Invalid proof image URL', 400);
+    }
+
+    $proofBlockHeight = isset($data['proof_block_height']) ? (int)$data['proof_block_height'] : 0;
+    if ($proofBlockHeight < 0 || $proofBlockHeight > 9999999) {
+        $proofBlockHeight = 0;
+    }
+
+    $localShipping = isset($data['local_shipping_sats']) ? (int)$data['local_shipping_sats'] : 0;
+    $intlShipping = isset($data['intl_shipping_sats']) ? (int)$data['intl_shipping_sats'] : 0;
+    if ($localShipping < 0 || $localShipping > 2100000000000000) {
+        throw new Exception('Invalid local shipping amount', 400);
+    }
+    if ($intlShipping < 0 || $intlShipping > 2100000000000000) {
+        throw new Exception('Invalid international shipping amount', 400);
+    }
+
+    return [
+        'card_template_id' => $cardTemplateId,
+        'title' => $title,
+        'description' => $description,
+        'price_sats' => $priceSats,
+        'condition' => $condition,
+        'serial_number' => $serial,
+        'image_urls' => $imageUrls,
+        'proof_image_url' => $proofUrl,
+        'proof_block_height' => $proofBlockHeight,
+        'local_shipping_sats' => $localShipping,
+        'intl_shipping_sats' => $intlShipping,
+    ];
+}
+
+/**
+ * Validate an auction payload before insert.
+ */
+function validateAuctionPayload(array $data, PDO $db): array {
+    $title = sanitizeUserText($data['title'] ?? '', 120);
+    if ($title === '') {
+        throw new Exception('Title is required', 400);
+    }
+
+    $cardTemplateId = isset($data['card_template_id']) ? (int)$data['card_template_id'] : 0;
+    if ($cardTemplateId <= 0) {
+        throw new Exception('Valid card template ID required', 400);
+    }
+    $exists = $db->prepare('SELECT 1 FROM card_templates WHERE id = ?');
+    $exists->execute([$cardTemplateId]);
+    if (!$exists->fetch()) {
+        throw new Exception('Card template not found', 404);
+    }
+
+    $startingPrice = isset($data['starting_price_sats']) ? (int)$data['starting_price_sats'] : -1;
+    if ($startingPrice < 1 || $startingPrice > 2100000000000000) {
+        throw new Exception('Starting price must be between 1 and 21M BTC in sats', 400);
+    }
+
+    $description = sanitizeUserText($data['description'] ?? '', 2000);
+    $reserve = isset($data['reserve_price_sats']) ? (int)$data['reserve_price_sats'] : 0;
+    if ($reserve < 0 || $reserve > 2100000000000000) {
+        throw new Exception('Invalid reserve price', 400);
+    }
+
+    $durationHours = isset($data['duration_hours']) ? (int)$data['duration_hours'] : 0;
+    if ($durationHours < 1 || $durationHours > 168) {
+        throw new Exception('Auction duration must be between 1 and 168 hours', 400);
+    }
+
+    $imageUrls = $data['image_urls'] ?? [];
+    if (!is_array($imageUrls)) {
+        $imageUrls = [];
+    }
+    $imageUrls = array_slice($imageUrls, 0, 5);
+    foreach ($imageUrls as $url) {
+        if (!is_string($url) || strlen($url) > 500) {
+            throw new Exception('Invalid image URL', 400);
+        }
+    }
+
+    $localShipping = isset($data['local_shipping_sats']) ? (int)$data['local_shipping_sats'] : 0;
+    $intlShipping = isset($data['intl_shipping_sats']) ? (int)$data['intl_shipping_sats'] : 0;
+    if ($localShipping < 0 || $localShipping > 2100000000000000) {
+        throw new Exception('Invalid local shipping amount', 400);
+    }
+    if ($intlShipping < 0 || $intlShipping > 2100000000000000) {
+        throw new Exception('Invalid international shipping amount', 400);
+    }
+
+    return [
+        'card_template_id' => $cardTemplateId,
+        'title' => $title,
+        'description' => $description,
+        'starting_price_sats' => $startingPrice,
+        'reserve_price_sats' => $reserve,
+        'duration_hours' => $durationHours,
+        'image_urls' => $imageUrls,
+        'local_shipping_sats' => $localShipping,
+        'intl_shipping_sats' => $intlShipping,
+    ];
+}
+
 $db = getDB();
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
@@ -88,7 +249,7 @@ try {
             if (!$email || !$password || !$display_name) {
                 throw new Exception('Email, password and display name required', 400);
             }
-            if (strlen($password) < 6) throw new Exception('Password must be at least 6 characters', 400);
+            if (strlen($password) < 8) throw new Exception('Password must be at least 8 characters', 400);
             if (!$accept_disclaimer) throw new Exception('You must accept the disclaimer', 400);
             if (!verifyCSRF($csrf)) throw new Exception('Invalid CSRF token', 403);
             
@@ -478,26 +639,33 @@ try {
             $user = requireAuth();
             if ($method !== 'POST') throw new Exception('POST required', 405);
             $data = json_decode(file_get_contents('php://input'), true);
-            
+
+            $validated = validateAuctionPayload($data, $db);
             $id = bin2hex(random_bytes(16));
-            $startingPrice = intval($data['starting_price_sats'] ?? 0);
-            $duration = intval($data['duration_hours'] ?? 72); // default 3 days
+            $startingPrice = $validated['starting_price_sats'];
+            $duration = $validated['duration_hours'];
             $startsAt = $data['starts_at'] ?? date('Y-m-d H:i:s');
+            // Defensive: only accept explicit ISO-ish datetime; otherwise now
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/', $startsAt)) {
+                $startsAt = date('Y-m-d H:i:s');
+            }
             $endsAt = date('Y-m-d H:i:s', strtotime($startsAt . " +{$duration} hours"));
-            
-            $stmt = $db->prepare('INSERT INTO auctions (id, seller_id, card_template_id, title, description, starting_price_sats, current_price_sats, serial_number, image_urls, proof_image_url, proof_block_height, condition_text, local_shipping_sats, intl_shipping_sats, starts_at, ends_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            if ($endsAt === false) {
+                $endsAt = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            }
+
+            $stmt = $db->prepare('INSERT INTO auctions (id, seller_id, card_template_id, title, description, starting_price_sats, current_price_sats, reserve_price_sats, serial_number, image_urls, proof_image_url, proof_block_height, condition_text, local_shipping_sats, intl_shipping_sats, starts_at, ends_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             $stmt->execute([
-                $id, $user['id'], $data['card_template_id'] ?? null,
-                $data['title'], $data['description'] ?? '',
-                $startingPrice, $startingPrice,
-                $data['serial_number'] ?? '',
-                json_encode($data['image_urls'] ?? []),
-                $data['proof_image_url'] ?? '', $data['proof_block_height'] ?? 0,
-                $data['condition'] ?? 'mint',
-                $data['local_shipping_sats'] ?? 0, $data['intl_shipping_sats'] ?? 0,
+                $id, $user['id'], $validated['card_template_id'],
+                $validated['title'], $validated['description'], $startingPrice,
+                $startingPrice, $validated['reserve_price_sats'], '',
+                json_encode($validated['image_urls']),
+                '', 0,
+                'mint',
+                $validated['local_shipping_sats'], $validated['intl_shipping_sats'],
                 $startsAt, $endsAt, 'active'
             ]);
-            
+
             echo json_encode(['success' => true, 'id' => $id, 'ends_at' => $endsAt]);
             break;
 

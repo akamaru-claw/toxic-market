@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#08080f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Toxic Market — MX12ART Sammelkarten-Marktplatz</title>
+    <meta name="description" content="Der Bitcoin-Marktplatz für MX12ART Toxic Booster Sammelkarten. Kaufen, verkaufen, bieten — mit Lightning und Onchain.">
+    <meta name="keywords" content="Toxic Booster,MX12ART,Sammelkarten,Bitcoin,Lightning,Auktion,Zitadelle,Genesis">
+    <meta property="og:title" content="Toxic Market — MX12ART Sammelkarten">
+    <meta property="og:description" content="Der dedizierte Marktplatz für Toxic Booster Karten. Genesis 2025 · Zitadelle 2026 · Remake EN">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ml-bets.com/toxic-market/">
+    <meta property="og:image" content="https://ml-bets.com/toxic-market/cards/card.svg.php?id=1&gen=1&name=Toxic%20Market&holo=0">
+    <meta property="og:site_name" content="Toxic Market">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Toxic Market — MX12ART Sammelkarten">
+    <meta name="twitter:description" content="Bitcoin-Marktplatz für Toxic Booster Karten">
+    <meta name="twitter:image" content="https://ml-bets.com/toxic-market/cards/card.svg.php?id=1&gen=1&name=Toxic%20Market&holo=0">
+    <link rel="icon" href="/toxic-market/favicon.svg" type="image/svg+xml">
+    <link href="/toxic-market/favicon.svg" rel="icon" type="image/svg+xml">
+    <link href="/toxic-market/css/toxic.css?v=3" rel="stylesheet">
+</head>
+<body>
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/toxic-market/" class="logo">
+                <span class="logo-icon">🧪</span>
+                <span class="logo-text">Toxic Market</span>
+            </a>
+            <div class="nav-links">
+                <a href="/toxic-market/#cards" class="desktop-link">Karten</a>
+                <a href="/toxic-market/set-builder" class="desktop-link">📋 Sets</a>
+                <a href="/toxic-market/#listings" class="desktop-link">Kaufen</a>
+                <a href="/toxic-market/#auctions" class="desktop-link">Auktionen</a>
+                <a href="/toxic-market/create-auction" id="create-auction-btn" class="btn btn-outline btn-sm hidden desktop-link" style="text-decoration:none;">🔨 Auktion</a>
+                <a href="/toxic-market/create" id="create-listing-btn" class="btn btn-primary btn-sm hidden desktop-link" style="text-decoration:none;">🏷️ Verkaufen</a>
+                <button id="login-btn" class="btn btn-outline btn-sm" onclick="showAuth()">Anmelden</button>
+                <div id="user-menu" class="hidden" style="display:flex;align-items:center;gap:10px;">
+                    <a href="/toxic-market/dashboard" class="btn btn-outline btn-sm" style="text-decoration:none;">📊</a>
+                    <a href="/toxic-market/create" class="btn btn-primary btn-sm" style="text-decoration:none;">🏷️</a>
+                    <span id="user-name" style="color:var(--accent);font-weight:600;font-size:14px;"></span>
+                    <button class="btn btn-sm" onclick="logout()">✕</button>
+                </div>
+                <button id="hamburger" class="hamburger" onclick="toggleMobileNav()">☰</button>
+            </div>
+        </div>
+        <div id="mobile-nav" class="mobile-nav">
+            <a href="/toxic-market/#cards">🃏 Karten</a>
+            <a href="/toxic-market/set-builder">📋 Set Builder</a>
+            <a href="/toxic-market/#listings">🏷️ Kaufen</a>
+            <a href="/toxic-market/#auctions">🔨 Auktionen</a>
+            <a id="mobile-create" href="/toxic-market/create" class="hidden">➕ Verkaufen</a>
+            <a href="/toxic-market/dashboard">📊 Dashboard</a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section id="hero">
+        <div class="container">
+            <h1>Toxic Market</h1>
+            <p class="subtitle">Die Bitcoin-Plattform für <strong>MX12ART Toxic Booster</strong> Sammelkarten</p>
+            <div class="hero-stats">
+                <div class="stat"><span class="stat-num" id="stat-cards">63</span><span class="stat-label">Karten</span></div>
+                <div class="stat"><span class="stat-num" id="stat-total">13.440</span><span class="stat-label">Gesamtauflage</span></div>
+                <div class="stat"><span class="stat-num" id="stat-listings">0</span><span class="stat-label">Angebote</span></div>
+            </div>
+            <div class="generations">
+                <a href="#cards" class="gen-card" data-gen="1">
+                    <div class="gen-badge">2025</div>
+                    <h3>Genesis Edition</h3>
+                    <p>21 Motive · 210 Stück · #21 Holo</p>
+                </a>
+                <a href="#cards" class="gen-card" data-gen="2">
+                    <div class="gen-badge">2026</div>
+                    <h3>Zitadelle Edition</h3>
+                    <p>21 Motive · 210 Stück · #1, #21, #210 Holo</p>
+                </a>
+                <a href="#cards" class="gen-card" data-gen="3">
+                    <div class="gen-badge">Remake</div>
+                    <h3>Genesis Remake (EN)</h3>
+                    <p>21 Motive · 35 Stück · Englisch</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cards Browser -->
+    <section id="cards" class="section">
+        <div class="container">
+            <h2>🃏 Karten-Browser</h2>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-gen="all">Alle</button>
+                <button class="filter-btn" data-gen="1">Genesis 2025</button>
+                <button class="filter-btn" data-gen="2">Zitadelle 2026</button>
+                <button class="filter-btn" data-gen="3">Remake (EN)</button>
+                <input type="search" id="card-search" placeholder="Suchen..." class="search-input">
+                <select id="price-filter" class="filter-btn" style="cursor:pointer;">
+                    <option value="all">Beliebiger Preis</option>
+                    <option value="0-1000">0 – 1.000 sats</option>
+                    <option value="1000-5000">1.000 – 5.000 sats</option>
+                    <option value="5000-20000">5.000 – 20.000 sats</option>
+                    <option value="20000-50000">20.000 – 50.000 sats</option>
+                    <option value="50000+">50.000+ sats</option>
+                </select>
+                <select id="sort-filter" class="filter-btn" style="cursor:pointer;">
+                    <option value="id">Sortierung: ID</option>
+                    <option value="name">Name A-Z</option>
+                    <option value="price-asc">Preis ↑</option>
+                    <option value="price-desc">Preis ↓</option>
+                </select>
+            </div>
+            <div id="cards-grid" class="cards-grid">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Active Listings -->
+    <section id="listings" class="section section-alt">
+        <div class="container">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+                <h2 style="margin:0;">🏷️ Kaufen</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;cursor:pointer;">
+                        <input type="checkbox" id="filter-images" style="accent-color:var(--accent);"> Nur mit Bild
+                    </label>
+                    <a href="/toxic-market/create" class="btn btn-primary btn-sm" id="create-listing-btn-2" style="display:none;">+ Angebot erstellen</a>
+                </div>
+            </div>
+            <div id="listings-grid" class="listings-grid">
+                <p class="empty">Noch keine Angebote. <a href="#" onclick="showCreateListing()">Erstelle das Erste!</a></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Proof of Ownership -->
+    <section id="proof" class="section">
+        <div class="container">
+            <h2>🔍 Besitznachweis</h2>
+            <p style="color:var(--text-muted); margin-bottom:20px;">Bevor du eine Karte kaufst, fordere den Verkäufer auf, seinen Besitz nachzuweisen.</p>
+            <div class="proof-box">
+                <h3>So funktioniert's</h3>
+                <ol class="proof-steps">
+                    <li data-step="1.">Verkäufer ruft die aktuelle Block-Height ab</li>
+                    <li data-step="2.">Schreibt <strong>Block-Height + Benutzernamen</strong> auf einen Zettel</li>
+                    <li data-step="3.">Hält den Zettel <strong>neben die physische Karte</strong></li>
+                    <li data-step="4.">Fotografiert beides zusammen und lädt das Bild hoch</li>
+                    <li data-step="5.">Käufer vergleicht Block-Height mit der Blockchain</li>
+                </ol>
+                <div class="proof-hash-box" id="proof-block-info">
+                    Lade aktuelle Block-Height...
+                </div>
+                <button class="btn btn-primary" onclick="loadBlockInfo()">🔄 Block-Height abrufen</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Active Auctions -->
+    <section id="auctions" class="section">
+        <div class="container">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+                <h2 style="margin:0;">🔨 Live-Auktionen</h2>
+                <a href="/toxic-market/create-auction" class="btn btn-outline btn-sm" id="create-auction-btn-2" style="display:none;">🔨 Auktion starten</a>
+            </div>
+            <div id="auctions-grid" class="auctions-grid">
+                <p class="empty">Keine aktiven Auktionen. <a href="/toxic-market/create-auction" onclick="return showAuthFirst()">Erstelle die erste!</a></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal hidden">
+        <div class="modal-backdrop" onclick="hideAuth()"></div>
+        <div class="modal-content">
+            <button class="modal-close" onclick="hideAuth()">✕</button>
+            <div class="auth-tabs">
+                <button class="tab active" onclick="switchTab('login')">Anmelden</button>
+                <button class="tab" onclick="switchTab('register')">Registrieren</button>
+            </div>
+            
+            <!-- Login -->
+            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="login-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Passwort</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Anmelden</button>
+                <p id="login-error" class="error hidden"></p>
+                <p style="text-align:center;margin-top:12px;"><a href="#" onclick="showResetPassword();return false;" style="font-size:13px;color:var(--text-muted);">Passwort vergessen?</a></p>
+            </form>
+
+            <!-- Register -->
+            <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Anzeigename</label>
+                    <input type="text" id="reg-name" required placeholder="Satoshi" minlength="2" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Passwort (mind. 6 Zeichen)</label>
+                    <input type="password" id="reg-password" required placeholder="••••••••" minlength="6">
+                </div>
+                <div id="nostr-key-area" style="background:var(--bg);border:1px solid rgba(196,77,255,0.3);border-radius:10px;padding:14px;margin-bottom:16px;">
+                    <div style="font-size:13px;color:var(--purple);font-weight:600;margin-bottom:8px;">🔑 Nostr-Schlüssel</div>
+                    <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">
+                        Bei der Registrierung wird automatisch ein Nostr-Schlüsselpaar erzeugt. Deine Listings und Trades werden öffentlich auf Nostr festgehalten.
+                    </p>
+                    <div id="reg-npub" style="display:none;margin-top:8px;">
+                        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Dein öffentlicher Schlüssel (npub):</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);word-break:break-all;background:var(--bg-elevated);padding:8px;border-radius:6px;" id="reg-npub-display"></div>
+                    </div>
+                </div>
+                <div class="form-group disclaimer-check">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="reg-disclaimer" required>
+                        <span>Ich verstehe, dass Toxic Market ein reiner <strong>Vermittlungsplatz</strong> ist. Der Betreiber verwahrt kein Geld und übernimmt keine Haftung für Transaktionen. Ich handle auf eigenes Risiko. Meine Nostr-Schlüssel werden lokal gespeichert — ich bin selbst verantwortlich für ein Backup.</span>
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Account erstellen</button>
+                <p id="reg-error" class="error hidden"></p>
+            </form>
+
+            <!-- Reset Password -->
+            <div id="reset-form" class="auth-form hidden">
+                <h3 style="margin-bottom:16px;font-size:1.1rem;">🔐 Passwort zurücksetzen</h3>
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Gib deine E-Mail ein. Du erhältst ein Token zum Zurücksetzen.</p>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reset-email" required placeholder="name@example.com">
+                </div>
+                <button class="btn btn-primary btn-full" onclick="handleRequestReset()">Token generieren</button>
+                <div id="reset-token-area" class="hidden" style="margin-top:16px;">
+                    <div class="proof-hash-box" style="font-size:11px;word-break:break-all;" id="reset-token-display"></div>
+                    <div class="form-group" style="margin-top:12px;">
+                        <label>Neues Passwort (mind. 6 Zeichen)</label>
+                        <input type="password" id="reset-new-password" required placeholder="Neues Passwort" minlength="6">
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="handleResetPassword()">Passwort ändern</button>
+                </div>
+                <p id="reset-error" class="error hidden" style="margin-top:8px;"></p>
+                <p style="text-align:center;margin-top:12px;"><a href="#" onclick="backToLogin();return false;" style="font-size:13px;color:var(--text-muted);">← Zurück zur Anmeldung</a></p>
+            </div>
+
+            <div class="auth-divider"><span>oder</span></div>
+            <!-- Nostr Login: NIP-07 Extension -->
+            <button class="btn btn-bitcoin btn-full" onclick="loginNostr()" id="btn-login-nip07">
+                ⚡ Login mit Nostr-Extension
+            </button>
+            <p style="text-align:center;margin:8px 0;color:var(--text-dim);font-size:12px;">nos2x, Alby, etc.</p>
+            <!-- Nostr Login: nsec Key -->
+            <div class="auth-divider"><span>oder nsec</span></div>
+            <div class="form-group" style="margin-top:12px;">
+                <label>nsec / npub</label>
+                <input type="password" id="login-nsec" placeholder="nsec1... oder npub1..." style="font-size:16px;" autocomplete="off">
+            </div>
+            <button class="btn btn-outline btn-full" onclick="loginWithNsec()" style="margin-top:8px;border-color:var(--purple);color:var(--purple);">
+                🔑 Login mit Schlüssel
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>🧪 Toxic Market — Beta · Nur für MX12ART Toxic Booster Karten</p>
+            <p>Bitcoin-Lightning · Nostr · Open Source</p>
+            <p><a href="https://github.com/akamaru-claw/toxic-market">GitHub</a> · <a href="/toxic-market/api/api.php?action=cards">API</a></p>
+        </div>
+    </footer>
+
+    <!-- DISCLAIMER BANNER -->
+    <div id="disclaimer-banner" class="disclaimer-banner">
+        <div class="container">
+            <p><strong>⚠️ Wichtiger Hinweis:</strong> Toxic Market ist ein <strong>reiner Marktplatz zur Vermittlung</strong>. Der Betreiber verwahrt kein Geld, handelt nicht mit Karten und übernimmt keine Haftung für einzelne Transaktionen. Käufer und Verkäufer handeln <strong>auf eigenes Risiko</strong>. Nutze die Besitznachweis-Funktion um Echtheit zu prüfen.</p>
+            <button class="btn btn-sm" onclick="document.getElementById('disclaimer-banner').style.display='none'">Verstanden</button>
+        </div>
+    </div>
+
+    <script src="/toxic-market/js/noble-curves-bundle.js?v=1"></script>
+    <script src="/toxic-market/js/nostr.js?v=5"></script>
+    <script src="/toxic-market/js/toxic.js?v=6"></script>
+</body>
+</html>

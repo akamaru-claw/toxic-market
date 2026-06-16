@@ -259,6 +259,18 @@ async function handleRegister(e) {
         showError('reg-error', 'Du musst den Disclaimer akzeptieren');
         return;
     }
+    if (!name || name.length < 2 || name.length > 50) {
+        showError('reg-error', 'Anzeigename: 2–50 Zeichen');
+        return;
+    }
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+        showError('reg-error', 'Gültige E-Mail eingeben');
+        return;
+    }
+    if (!password || password.length < 8) {
+        showError('reg-error', 'Passwort mindestens 8 Zeichen');
+        return;
+    }
     
     // Generate Nostr keypair
     let nostrPubkey = null;
@@ -634,7 +646,7 @@ async function handleRequestReset() {
 async function handleResetPassword() {
     const password = document.getElementById('reset-new-password').value;
     if (!resetToken) { toast('Erst Token generieren', 'warning'); return; }
-    if (password.length < 6) { toast('Mind. 6 Zeichen', 'error'); return; }
+    if (password.length < 8) { toast('Mind. 8 Zeichen', 'error'); return; }
     try {
         const res = await fetch(API + '?action=reset_password', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },

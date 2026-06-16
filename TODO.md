@@ -38,12 +38,14 @@
 - [x] IP-basiertes Rate-Limiting für Login, Registrierung, Passwort-Reset (`includes/rate_limit.php`)
 - [x] Admin-Check über `isAdmin()` statt hartkodierter E-Mail
 - [x] `.gitignore` für `data/`, `uploads/`, `.env`, Logs
+- [x] Passwort-Mindestlänge auf 8 Zeichen erhöht (`api/api.php`, `includes/auth.php`, `public/js/toxic.js`)
+- [x] Serverseitige Eingabevalidierung für `create_listing` und `create_auction` (Preis, Bild-URLs, Karten-ID, Versand)
+- [x] Content-Security-Policy, XSS-Protection, HSTS, X-Frame-Options, Referrer-Policy in `.htaccess` und API-Responses
 - [ ] Nostr-Login: Server-seitige Schnorr-Signatur-Verifikation implementieren
 - [ ] CSRF-Token auf jeder POST-Seite prüfen (aktuell nur API)
-- [ ] Passwort-Richtlinie verschärfen (mindestens 8 Zeichen, Sonderzeichen)
-- [ ] SQL-Injection-Audit (aktuell vorbereitete Statements)
 - [ ] Upload-Verzeichnis: MIME-Type-Check härten (Magick/Exif)
-- [ ] Content-Security-Policy-Header hinzufügen
+- [ ] SQL-Injection-Audit (aktuell vorbereitete Statements)
+- [ ] Session-Cookie-Flags (`HttpOnly`, `Secure`, `SameSite=Lax`) serverseitig forcieren
 
 ## 🧪 Tests
 
@@ -62,6 +64,7 @@
 
 - [x] Root-Level PHP-Dateien und `public/` synchronisieren
 - [x] Deploy-Scripte an aktuelle Struktur anpassen
+- [x] `index.html` aus `public/` ins Repo-Root kopiert (für SPA-Routing via `.htaccess`)
 - [ ] HTML-Vorlagen in `public/` mit Root-PHP-Dateien synchron halten (Build-Schritt?)
 - [ ] `app.css`, `app.v2.css`, `card.css` etc. — alte Dateien bereinigen
 - [ ] `app.js`, `app.v2.js`, `nostr.js` — Doppelungen auflösen

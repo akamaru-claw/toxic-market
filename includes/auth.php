@@ -125,6 +125,9 @@ function verifyResetToken(string $token): ?array {
 }
 
 function resetPassword(string $token, string $newPassword): bool {
+    if (strlen($newPassword) < 8) {
+        throw new Exception('Password must be at least 8 characters', 400);
+    }
     $reset = verifyResetToken($token);
     if (!$reset) return false;
     
