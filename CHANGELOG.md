@@ -1,5 +1,20 @@
 # Toxic Market — Entwicklungs-Tagebuch
 
+## 2026-06-16 — Security-Hardening nach Review
+
+### Sicherheitsfixes
+- **SFTP-Zugangsdaten aus Repo entfernt** (`README.md`, `deploy_toxic.sh`, `deploy_toxic.py`) — werden jetzt aus Umgebungsvariablen geladen.
+- **Passwort-Reset** gibt den Reset-Token nicht mehr in der API-Antwort zurück; stattdessen wird `sendResetEmail()` aufgerufen (aktuell Stub, siehe Issue #3).
+- **Nostr-Login vorübergehend deaktiviert**, weil keine serverseitige Schnorr-Signaturprüfung vorhanden war — Account-Übernahme per bekanntem npub möglich.
+- **PHP-Fehlerausgabe gehärtet**: `display_errors=0`, Fehler nur serverseitig geloggt, Deprecation/Strict-Warnungen unterdrückt.
+
+### Neue Dokumentation
+- `SECURITY.md` mit Status aller gemeldeten Schwachstellen und offenen TODOs.
+- GitHub Issues angelegt:
+  - Issue #1: Serverseitige Schnorr-Verifikation für Nostr-Login
+  - Issue #2: Strato-SFTP-Passwort wegen Git-History-Leak rotieren
+  - Issue #3: Echte E-Mail-Versand-Infrastruktur für Passwort-Reset
+
 ## 2026-06-04 — Phase 3: Seller, Listing-Detail, Upload
 
 ### Neue Features
