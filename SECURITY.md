@@ -1,33 +1,49 @@
-# Toxic Market — Security Notes
+# Toxic Market — Security
 
-## Reported vulnerabilities and their status
+> Status: Work in progress. Letzter Review: 2026-06-16.
 
-| # | Finding | Status | Commit / Issue |
-|---|---------|--------|----------------|
-| 1 | SFTP credentials in plaintext in public GitHub repo (README + deploy scripts) | **Fixed in current HEAD** | `97ba7a8` |
-| 2 | Password-reset API returned raw reset token, enabling account takeover | **Fixed** | `ee6a11a` |
-| 3 | Nostr login without signature verification, enabling identity spoofing | **Mitigated** (login disabled until proper Schnorr verification is implemented) | `c997539`, see Issue #1 |
-| 4 | Debug files / `display_errors=1` in web root | **Hardened** | `c997539` |
+## ✅ Erledigt
 
-## Immediate actions required
+| Thema | Status | Details |
+|-------|--------|---------|
+| SFTP-Passwort aus Repo entfernt | ✅ | `README.md`, `deploy_toxic.sh`, `deploy_toxic.py` laden nur aus `STRATO_*` Env-Variablen. |
+| Passwort-Reset Token nicht im API-Response | ✅ | `request_reset` gibt nur generische Meldung zurück. Token wird an `sendResetEmail()` übergeben. |
+| PHP-Fehlerausgabe deaktiviert | ✅ | `display_errors=0`, Logging nur in `data/error.log`. |
+| Sensible Verzeichnisse blockiert | ✅ | `.htaccess` blockiert `data/`, `includes/`, `uploads/`. |
+| SQL-Injection | ✅ | Alle DB-Zugriffe über vorbereitete Statements (`PDO::prepare`). |
 
-1. **Rotate the Strato SFTP password.** The old password is still visible in Git history even though it was removed from the current HEAD. See Issue #2.
-2. **Set environment variables locally** before deploying:
-   ```bash
-   export STRATO_HOST="${STRATO_HOST:-}"
-   export STRATO_USER="${STRATO_USER:-}"
-   export STRATO_PASS="your-new-password"
-   ```
-3. **Do not re-enable Nostr login** until server-side BIP-340 Schnorr signature verification is in place. See Issue #1.
-4. **Add a real SMTP/transactional email provider** for password-reset emails. The current `sendResetEmail()` only logs to the server error log. See Issue #3.
+## 🚧 Offen / Bekannt
 
-## Ongoing security measures
+| Thema | Status | Risiko | Tracking |
+|-------|--------|--------|----------|
+| Strato-Passwort rotieren | 🚧 | Hoch: Passwort in Git-History sichtbar | GitHub Issue #3 |
+| Echte E-Mail-Versand für Passwort-Reset | 🚧 | Mittel: Reset funktioniert ohne Mail nicht | GitHub Issue #2 |
+| Nostr-Login ohne Schnorr-Verify | 🚧 | Hoch: Account-Übernahme per npub | `includes/auth.php` + TODO.md |
+| Rate-Limiting fehlt | 🚧 | Mittel: Brute-Force auf Login/Register/Reset | TODO.md |
+| Upload MIME-Check | 🚧 | Niedrig: Nur Dateityp-String geprüft | TODO.md |
 
-- All backend errors are logged server-side (`data/error.log`) and never displayed to users.
-- CSRF tokens are required for email/password login and registration.
-- Uploaded images are stored outside direct web access.
-- Sensitive directories (`data/`, `includes/`, `uploads/`) are blocked by `.htaccess`.
+## 📋 Maßnahmen
 
-## Responsible disclosure
+1. **Strato-Passwort rotieren**
+   - Im Strato-Kundencenter das SFTP/SSH-Passwort ändern.
+   - Lokale `STRATO_PASS` Umgebungsvariable aktualisieren.
+   - Kein neuer Deploy mit dem alten Passwort.
 
-If you find a security issue, please open a private GitHub issue or contact the maintainer directly. Do not post credentials or exploit details in public issues.
+2. **E-Mail-Transport**
+   - Möglichkeiten: Strato-SMTP, PHPMailer, Postmark, SendGrid, AWS SES.
+   - Tokens dürfen nicht geloggt werden.
+   - Rate-Limit: max. 3 Reset-Versuche pro E-Mail / 15 Minuten.
+
+3. **Nostr-Login**
+   - Server-seitige BIP-340/Schnorr-Verifikation mit `php-bolt11` oder `sop` notwendig.
+   - Challenge-Response-Flow: Server gibt Nonce, Client signiert, Server prüft.
+
+4. **Rate-Limiting**
+   - IP-basiertes Limit für Login / Register / Reset.
+   - In SQLite-Tabelle `rate_limits` persistieren.
+
+## 🔒 Verantwortlichkeiten
+
+- **Akamaru** führt keine Deploys auf Strato ohne ausdrückliche Zustimmung von Kiba durch.
+- Neue Credentials werden nur in Umgebungsvariablen oder `data/` (nicht versioniert) gespeichert.
+- Sicherheitsrelevante Änderungen werden in GitHub-Issues dokumentiert.

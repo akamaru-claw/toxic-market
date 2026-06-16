@@ -1,10 +1,25 @@
 # Toxic Market — Entwicklungs-Tagebuch
 
+## 2026-06-16 — Night-Dev: Code-Sync + Deploy-Scripte + Dokumentation
+
+### Cleanup
+- **Root- und `public/`-PHP-Dateien synchronisiert**: `card.php`, `create.php`, `create-auction.php`, `listing.php`, `seller.php`, `auction.php`, `dashboard.php`, `set-builder.php`, `sitemap.php` wurden aus `public/` ins Repo-Root kopiert.
+- **Deploy-Scripte repariert**: `deploy_toxic.sh` und `deploy_toxic.py` laden jetzt aus dem Repo-Root (PHP-Dateien) und `public/` (CSS/JS/Karten). Sie referenzieren keine veralteten `public/*.html`-Pfade mehr.
+- **Statische Root-Dateien synchronisiert**: `404.html`, `llms.txt`, `robots.txt`, `favicon.svg` aus `public/` ins Root kopiert.
+
+### Dokumentation
+- `README.md` aktualisiert: korrekte Projektstruktur, aktueller Feature-Status, Deploy-Hinweise (nur Umgebungsvariablen, kein Passwort im Repo).
+- `TODO.md` angelegt: Blocker, Zahlungen/Auktionen, Security, Tests, Tech Debt.
+- `CHANGELOG.md` mit diesem Eintrag ergänzt.
+
+### GitHub Issues
+- Duplikat-Issue #1 (Email-Transport) wird geschlossen, da #2 den gleichen Inhalt hat.
+
 ## 2026-06-16 — Security-Hardening nach Review
 
 ### Sicherheitsfixes
 - **SFTP-Zugangsdaten aus Repo entfernt** (`README.md`, `deploy_toxic.sh`, `deploy_toxic.py`) — werden jetzt aus Umgebungsvariablen geladen.
-- **Passwort-Reset** gibt den Reset-Token nicht mehr in der API-Antwort zurück; stattdessen wird `sendResetEmail()` aufgerufen (aktuell Stub, siehe Issue #3).
+- **Passwort-Reset** gibt den Reset-Token nicht mehr in der API-Antwort zurück; stattdessen wird `sendResetEmail()` aufgerufen (aktuell Stub, siehe Issue #2).
 - **Nostr-Login vorübergehend deaktiviert**, weil keine serverseitige Schnorr-Signaturprüfung vorhanden war — Account-Übernahme per bekanntem npub möglich.
 - **PHP-Fehlerausgabe gehärtet**: `display_errors=0`, Fehler nur serverseitig geloggt, Deprecation/Strict-Warnungen unterdrückt.
 
