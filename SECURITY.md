@@ -28,7 +28,7 @@ Wenn du eine Sicherheitslücke findest, melde sie bitte direkt an den Projekteig
 ## Bekannte Einschränkungen / TODOs
 
 - Nostr-Login ist deaktiviert, weil keine serverseitige BIP-340-Schnorr-Verifizierung implementiert ist.
-- E-Mail-Versand verwendet aktuell `mail()` / Logging. Für Produktion SMTP/SES/Postmark einrichten.
+- **E-Mail-Transport**: PHPMailer 6.9.1 für SMTP/SSL/TLS ist integriert. `mail()` ist Fallback. Konfiguration liegt außerhalb des Webroots in `data/email_config.json` (nicht im Repo). Absender-Domain auf `@ml-bets.com` beschränkt, Versand ratenlimitiert und audit-logged.
 - LNBits-API-Key wird als JSON im `data/`-Verzeichnis gespeichert. Dateiberechtigungen auf `0600` setzen.
 - Keine 2FA. Wird evaluiert, sobald Nostr-Login wieder aktiviert wird.
 - Dateiuploads: keine Viren- oder Bild-Manipulations-Validierung außer MIME-Typ und Größe.

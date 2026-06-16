@@ -59,10 +59,19 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/validation.php'
  * Never returns or logs the raw token to API responses.
  */
 function sendResetEmail(string $email, string $resetLink): bool {
-    // Production: use PHPMailer / Symfony Mailer / AWS SES / Postmark / etc.
-    // For now: log only to server error log, never to client response.
-    error_log("Password reset requested for {$email}: {$resetLink}");
-    return true;
+    $subject = '🔐 Passwort zurücksetzen — Toxic Market';
+    $body = '<p>Hallo,</p>' .
+        '<p>jemand (hoffentlich du) möchte das Passwort für deinen Toxic-Market-Account zurücksetzen. ' .
+        'Klicke innerhalb der nächsten 60 Minuten auf den Link:</p>' .
+        '<p style="text-align:center;margin:28px 0;"><a href="' . htmlspecialchars($resetLink) . '" ' .
+        'style="display:inline-block;background:#f7931a;color:#000;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;">' .
+        'Passwort zurücksetzen →</a></p>' .
+        '<p>Alternativ kannst du diese URL kopieren:</p>' .
+        '<code style="background:#111;padding:10px;border-radius:6px;display:block;word-break:break-all;">' . htmlspecialchars($resetLink) . '</code>' .
+        '<p>Wenn du das nicht angefordert hast, ignoriere diese E-Mail. Der Link läuft nach 60 Minuten ab.</p>';
+
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/email.php';
+    return sendEmail($email, $subject, $body);
 }
 function autoEndExpiredAuctions(PDO $db): void {
     $stmt = $db->prepare("UPDATE auctions SET status = 'ended' WHERE status = 'active' AND ends_at <= datetime('now')");

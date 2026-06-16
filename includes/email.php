@@ -16,20 +16,56 @@
  *   "from": "Toxic Market <noreply@ml-bets.com>",
  *   "reply_to": "Toxic Market <noreply@ml-bets.com>"
  * }
+ *
+ * Environment overrides (useful for testing or CI):
+ *   TOXIC_SMTP_HOST, TOXIC_SMTP_PORT, TOXIC_SMTP_USER,
+ *   TOXIC_SMTP_PASS, TOXIC_SMTP_SECURE, TOXIC_MAIL_FROM
  */
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/rate_limit.php';
 
+// PHPMailer for SMTP/SES transports (Strato-compatible, no Composer required).
+$phpmailerAutoload = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/PHPMailer/PHPMailer.php';
+if (file_exists($phpmailerAutoload)) {
+    require_once $phpmailerAutoload;
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/PHPMailer/SMTP.php';
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/PHPMailer/Exception.php';
+}
+
 const EMAIL_LOG_MAX_BYTES = 1048576; // 1 MiB per log file
 
 function getEmailConfig(): array {
     $path = $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/email_config.json';
-    if (!file_exists($path)) return [];
-    $json = file_get_contents($path);
-    if ($json === false) return [];
-    $config = json_decode($json, true);
-    return is_array($config) ? $config : [];
+    $config = [];
+    if (file_exists($path)) {
+        $json = file_get_contents($path);
+        if ($json !== false) {
+            $parsed = json_decode($json, true);
+            if (is_array($parsed)) $config = $parsed;
+        }
+    }
+
+    // Allow environment overrides for CI/local testing without touching data file.
+    $envMap = [
+        'TOXIC_SMTP_HOST' => 'smtp_host',
+        'TOXIC_SMTP_PORT' => 'smtp_port',
+        'TOXIC_SMTP_USER' => 'smtp_user',
+        'TOXIC_SMTP_PASS' => 'smtp_pass',
+        'TOXIC_SMTP_SECURE' => 'smtp_secure',
+        'TOXIC_MAIL_FROM' => 'from',
+    ];
+    foreach ($envMap as $env => $key) {
+        $value = getenv($env);
+        if ($value !== false && $value !== '') {
+            $config[$key] = $value;
+        }
+    }
+    if (isset($config['smtp_port'])) {
+        $config['smtp_port'] = (int) $config['smtp_port'];
+    }
+
+    return $config;
 }
 
 function rotateEmailLog(string $logPath): void {
@@ -87,11 +123,41 @@ function sendEmail(string $to, string $subject, string $body, string $from = 'To
         '<p style="font-size:12px;color:#888;">Toxic Market — P2P Marktplatz für MX12ART Sammelkarten. Kein Custody, keine Haftung.</p>' .
         '</div></body></html>';
 
-    if ($transport === 'smtp' && !empty($config['smtp_host'])) {
-        // SMTP transport requires PHPMailer or similar. For now we still fall
-        // back to mail() but log that SMTP config is present so an admin knows to
-        // install PHPMailer and wire it in. This avoids a half-broken SMTP impl.
-        logEmail("SMTP config present but not wired yet; falling back to mail() for {$to}");
+    // Prefer SMTP if PHPMailer is available and config is complete.
+    if ($transport === 'smtp' && !empty($config['smtp_host']) && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+        try {
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host = $config['smtp_host'];
+            $mail->Port = (int)($config['smtp_port'] ?? 587);
+            $mail->SMTPAuth = !empty($config['smtp_user']);
+            if ($mail->SMTPAuth) {
+                $mail->Username = $config['smtp_user'];
+                $mail->Password = $config['smtp_pass'] ?? '';
+            }
+            $secure = $config['smtp_secure'] ?? '';
+            if (in_array(strtolower($secure), ['ssl', 'tls'], true)) {
+                $mail->SMTPSecure = strtolower($secure);
+            }
+            $mail->CharSet = 'UTF-8';
+            $mail->setFrom(preg_replace('/^.*<|>.*$/', '', $from), preg_replace('/<.*$/', '', $from));
+            $mail->addAddress($to);
+            $mail->addReplyTo(preg_replace('/^.*<|>.*$/', '', $config['reply_to'] ?? $from));
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body = $html;
+            $mail->XMailer = 'ToxicMarket/1.0';
+            $result = $mail->send();
+            recordRateLimitAttempt('send_email');
+            logEmail(($result ? 'OK' : 'FAIL') . " smtp to {$to} subject={$subject}");
+            return $result;
+        } catch (Exception $e) {
+            logEmail("SMTP error for {$to}: " . $e->getMessage());
+            return false;
+        } catch (Throwable $e) {
+            logEmail("SMTP fatal for {$to}: " . $e->getMessage());
+            return false;
+        }
     }
 
     $result = mail($to, $subject, $html, implode("\r\n", $headers));

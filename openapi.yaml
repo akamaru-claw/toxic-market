@@ -1,0 +1,1170 @@
+openapi: 3.0.3
+info:
+  title: Toxic Market REST API
+  description: |
+    Bitcoin-basierter Marktplatz für MX12ART Toxic Booster Sammelkarten.
+    Session-basierte Authentifizierung, CSRF-Header für schreibende Endpunkte,
+    Preise in Satoshis.
+  version: "1.0.0"
+  contact:
+    name: Toxic Market Support
+    url: https://ml-bets.com/toxic-market/
+  license:
+    name: MIT
+    url: https://github.com/akamaru-claw/toxic-market/blob/main/LICENSE
+servers:
+  - url: https://ml-bets.com/toxic-market/api
+    description: Production API
+  - url: http://localhost/toxic-market/api
+    description: Local development API
+paths:
+  /api.php:
+    parameters:
+      - $ref: '#/components/parameters/Action'
+    options:
+      summary: CORS preflight
+      responses:
+        '204':
+          description: No content
+  /api.php?action=status:
+    get:
+      tags: [Auth]
+      summary: Session status + CSRF token
+      operationId: getStatus
+      responses:
+        '200':
+          description: Current session state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+  /api.php?action=register:
+    post:
+      tags: [Auth]
+      summary: Register new account
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /api.php?action=login:
+    post:
+      tags: [Auth]
+      summary: Login with email/password
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /api.php?action=logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      operationId: logout
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=request_reset:
+    post:
+      tags: [Auth]
+      summary: Request password reset
+      operationId: requestReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Always returns neutral success message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=reset_password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password, csrf_token]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+                csrf_token:
+                  type: string
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=cards:
+    get:
+      tags: [Cards]
+      summary: List card templates
+      operationId: listCards
+      parameters:
+        - name: generation
+          in: query
+          schema:
+            type: integer
+            enum: [1, 2, 3]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of cards
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Card'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+  /api.php?action=card:
+    get:
+      tags: [Cards]
+      summary: Single card detail
+      operationId: getCard
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Card details with listings and auctions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardDetail'
+  /api.php?action=listings:
+    get:
+      tags: [Listings]
+      summary: Active fixed-price listings
+      operationId: listListings
+      parameters:
+        - name: generation
+          in: query
+          schema:
+            type: integer
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: newest
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 24
+            maximum: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated listings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Listing'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      next_cursor:
+                        type: string
+                        nullable: true
+  /api.php?action=listing:
+    get:
+      tags: [Listings]
+      summary: Listing detail
+      operationId: getListing
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Listing details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+  /api.php?action=create_listing:
+    post:
+      tags: [Listings]
+      summary: Create a fixed-price listing
+      operationId: createListing
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateListingRequest'
+      responses:
+        '200':
+          description: Listing created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  listing_id:
+                    type: string
+  /api.php?action=update_listing:
+    post:
+      tags: [Listings]
+      summary: Update own listing
+      operationId: updateListing
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/CreateListingRequest'
+                - type: object
+                  required: [id]
+                  properties:
+                    id:
+                      type: string
+      responses:
+        '200':
+          description: Listing updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=delete_listing:
+    post:
+      tags: [Listings]
+      summary: Delete own listing
+      operationId: deleteListing
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Listing deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=mark_sold:
+    post:
+      tags: [Listings]
+      summary: Mark listing as sold
+      operationId: markSold
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Listing marked as sold
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=my_listings:
+    get:
+      tags: [Listings]
+      summary: Own listings
+      operationId: myListings
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: User's listings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Listing'
+  /api.php?action=auctions:
+    get:
+      tags: [Auctions]
+      summary: Active auctions
+      operationId: listAuctions
+      responses:
+        '200':
+          description: List of auctions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Auction'
+  /api.php?action=auction:
+    get:
+      tags: [Auctions]
+      summary: Auction detail
+      operationId: getAuction
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Auction details with bids
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuctionDetail'
+  /api.php?action=create_auction:
+    post:
+      tags: [Auctions]
+      summary: Create an auction
+      operationId: createAuction
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAuctionRequest'
+      responses:
+        '200':
+          description: Auction created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  auction_id:
+                    type: string
+  /api.php?action=place_bid:
+    post:
+      tags: [Auctions]
+      summary: Place a bid
+      operationId: placeBid
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [auction_id, amount_sats]
+              properties:
+                auction_id:
+                  type: string
+                amount_sats:
+                  type: integer
+      responses:
+        '200':
+          description: Bid placed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=bid_with_deposit:
+    post:
+      tags: [Auctions]
+      summary: Place bid with Lightning deposit
+      operationId: bidWithDeposit
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [auction_id, amount_sats]
+              properties:
+                auction_id:
+                  type: string
+                amount_sats:
+                  type: integer
+      responses:
+        '200':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  payment_request:
+                    type: string
+                  payment_hash:
+                    type: string
+  /api.php?action=check_bid_deposit:
+    post:
+      tags: [Auctions]
+      summary: Check deposit status
+      operationId: checkBidDeposit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_hash]
+              properties:
+                payment_hash:
+                  type: string
+      responses:
+        '200':
+          description: Deposit status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatus'
+  /api.php?action=btc_price:
+    get:
+      tags: [Payments]
+      summary: Current BTC price
+      operationId: getBtcPrice
+      responses:
+        '200':
+          description: EUR and USD prices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eur:
+                    type: number
+                  usd:
+                    type: number
+  /api.php?action=current_block:
+    get:
+      tags: [Payments]
+      summary: Current block height
+      operationId: getCurrentBlock
+      responses:
+        '200':
+          description: Block height
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  block_height:
+                    type: integer
+  /api.php?action=create_invoice:
+    post:
+      tags: [Payments]
+      summary: Create Lightning invoice for listing
+      operationId: createInvoice
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [listing_id, shipping_region]
+              properties:
+                listing_id:
+                  type: string
+                shipping_region:
+                  type: string
+                  enum: [de, eu, intl]
+      responses:
+        '200':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+  /api.php?action=create_purchase_invoice:
+    post:
+      tags: [Payments]
+      summary: Alternative purchase invoice creation
+      operationId: createPurchaseInvoice
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [listing_id]
+              properties:
+                listing_id:
+                  type: string
+      responses:
+        '200':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+  /api.php?action=check_payment:
+    post:
+      tags: [Payments]
+      summary: Check payment status
+      operationId: checkPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_hash]
+              properties:
+                payment_hash:
+                  type: string
+      responses:
+        '200':
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatus'
+  /api.php?action=onchain_address:
+    get:
+      tags: [Payments]
+      summary: Seller onchain address
+      operationId: getOnchainAddress
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Onchain address
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+  /api.php?action=my_transactions:
+    get:
+      tags: [Payments]
+      summary: Own transactions
+      operationId: myTransactions
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: User transactions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+  /api.php?action=notifications:
+    get:
+      tags: [Notifications]
+      summary: In-app notifications
+      operationId: getNotifications
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: User notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+  /api.php?action=mark_notifications_read:
+    post:
+      tags: [Notifications]
+      summary: Mark all notifications read
+      operationId: markNotificationsRead
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=payment_config:
+    post:
+      tags: [Admin]
+      summary: Save LNBits payment config
+      operationId: setPaymentConfig
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentConfig'
+      responses:
+        '200':
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /api.php?action=lnbits_test:
+    get:
+      tags: [Admin]
+      summary: Test LNBits connectivity
+      operationId: testLNBits
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+  /api.php?action=upload_image:
+    post:
+      tags: [Uploads]
+      summary: Upload an image
+      operationId: uploadImage
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  url:
+                    type: string
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: PHPSESSID
+      description: |
+        Session cookie set by PHP. Send requests with `credentials: 'same-origin'`.
+  parameters:
+    Action:
+      name: action
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+          [status, register, login, logout, request_reset, reset_password,
+           cards, card, listings, listing, create_listing, update_listing,
+           delete_listing, mark_sold, my_listings, auctions, auction,
+           create_auction, place_bid, bid_with_deposit, check_bid_deposit,
+           btc_price, current_block, create_invoice, create_purchase_invoice,
+           check_payment, onchain_address, my_transactions, notifications,
+           mark_notifications_read, payment_config, lnbits_test, upload_image]
+  schemas:
+    StatusResponse:
+      type: object
+      properties:
+        logged_in:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+        auth_method:
+          type: string
+          nullable: true
+        csrf_token:
+          type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+    RegisterRequest:
+      type: object
+      required: [email, password, display_name, accept_disclaimer, csrf_token]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+        accept_disclaimer:
+          type: boolean
+        csrf_token:
+          type: string
+        nostr_pubkey:
+          type: string
+          nullable: true
+    LoginRequest:
+      type: object
+      required: [email, password, csrf_token]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        csrf_token:
+          type: string
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+    Card:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        generation:
+          type: integer
+        description:
+          type: string
+        image_url:
+          type: string
+        active_listings:
+          type: integer
+        active_auctions:
+          type: integer
+        lowest_price:
+          type: integer
+          nullable: true
+    CardDetail:
+      allOf:
+        - $ref: '#/components/schemas/Card'
+        - type: object
+          properties:
+            variants:
+              type: array
+              items:
+                type: object
+            listings:
+              type: array
+              items:
+                $ref: '#/components/schemas/Listing'
+            auctions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Auction'
+    Listing:
+      type: object
+      properties:
+        id:
+          type: string
+        card_template_id:
+          type: integer
+        seller_id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        price_sats:
+          type: integer
+        condition:
+          type: string
+        serial_number:
+          type: string
+        image_urls:
+          type: array
+          items:
+            type: string
+        proof_image_url:
+          type: string
+        proof_block_height:
+          type: integer
+        local_shipping_sats:
+          type: integer
+        intl_shipping_sats:
+          type: integer
+        is_sold:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    CreateListingRequest:
+      type: object
+      required: [card_template_id, title, price_sats, condition, csrf_token]
+      properties:
+        card_template_id:
+          type: integer
+        title:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        price_sats:
+          type: integer
+          minimum: 1
+          maximum: 2100000000000000
+        condition:
+          type: string
+          enum: [mint, near_mint, excellent, good, played, poor]
+        serial_number:
+          type: string
+        local_shipping_sats:
+          type: integer
+          minimum: 0
+        intl_shipping_sats:
+          type: integer
+          minimum: 0
+        image_urls:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 500
+        proof_image_url:
+          type: string
+          maxLength: 500
+        proof_block_height:
+          type: integer
+        csrf_token:
+          type: string
+    Auction:
+      type: object
+      properties:
+        id:
+          type: string
+        card_template_id:
+          type: integer
+        seller_id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        starting_price_sats:
+          type: integer
+        reserve_price_sats:
+          type: integer
+        current_bid_sats:
+          type: integer
+        condition:
+          type: string
+        serial_number:
+          type: string
+        status:
+          type: string
+          enum: [active, ended, cancelled]
+        ends_at:
+          type: string
+          format: date-time
+        image_urls:
+          type: array
+          items:
+            type: string
+    AuctionDetail:
+      allOf:
+        - $ref: '#/components/schemas/Auction'
+        - type: object
+          properties:
+            bids:
+              type: array
+              items:
+                type: object
+    CreateAuctionRequest:
+      type: object
+      required: [card_template_id, title, starting_price_sats, duration_hours, condition, csrf_token]
+      properties:
+        card_template_id:
+          type: integer
+        title:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        starting_price_sats:
+          type: integer
+          minimum: 1
+        reserve_price_sats:
+          type: integer
+          minimum: 0
+        duration_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+        condition:
+          type: string
+          enum: [mint, near_mint, excellent, good, played, poor]
+        serial_number:
+          type: string
+        local_shipping_sats:
+          type: integer
+          minimum: 0
+        intl_shipping_sats:
+          type: integer
+          minimum: 0
+        image_urls:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 500
+        proof_image_url:
+          type: string
+          maxLength: 500
+        proof_block_height:
+          type: integer
+        csrf_token:
+          type: string
+    InvoiceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        transaction_id:
+          type: string
+        payment_request:
+          type: string
+        payment_hash:
+          type: string
+        amount_sats:
+          type: integer
+        status:
+          type: string
+    PaymentStatus:
+      type: object
+      properties:
+        paid:
+          type: boolean
+        error:
+          type: string
+          nullable: true
+        amount_msat:
+          type: integer
+        payment_hash:
+          type: string
+        settled_at:
+          type: string
+          nullable: true
+    PaymentConfig:
+      type: object
+      required: [lnbits_url, lnbits_api_key, fallback_onchain_address, sandbox_mode]
+      properties:
+        lnbits_url:
+          type: string
+          format: uri
+        lnbits_api_key:
+          type: string
+        fallback_onchain_address:
+          type: string
+        sandbox_mode:
+          type: boolean
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    Forbidden:
+      description: Invalid CSRF token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+              retry_after:
+                type: integer

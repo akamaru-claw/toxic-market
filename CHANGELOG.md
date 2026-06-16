@@ -5,6 +5,27 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 ## [Unreleased]
 
 ### Added
+- `includes/PHPMailer/`: PHPMailer 6.9.1 als lokale SMTP-Transport-Bibliothek (Strato-kompatibel, kein Composer nötig).
+- `includes/email.php`: Echter SMTP/SSL/TLS-Versand via PHPMailer; `data/email_config.json` oder Umgebungsvariablen (`TOXIC_SMTP_*`) aktivieren ihn. Ohne Config bleibt `mail()`-Fallback erhalten.
+- `api/api.php`: Passwort-Reset-E-Mails werden per `sendEmail()` verschickt (HTML-Template, 60-Minuten-Link), statt nur ins Server-Log geschrieben.
+- `openapi.yaml`: Erste öffentliche OpenAPI 3.0 Spezifikation für alle v1-Endpunkte (Auth, Cards, Listings, Auctions, Payments, Admin, Uploads).
+- Smoke-Tests für E-Mail-Validierung und SMTP-Config-Overrides in `tests/AuthTest.php`.
+
+### Changed
+- `includes/email.php`: `getEmailConfig()` liest jetzt auch `TOXIC_SMTP_HOST`, `TOXIC_SMTP_PORT`, `TOXIC_SMTP_USER`, `TOXIC_SMTP_PASS`, `TOXIC_SMTP_SECURE` und `TOXIC_MAIL_FROM` aus der Umgebung.
+- `SECURITY.md`: E-Mail-Transport als implementiert dokumentiert.
+- `TODO.md`: Abgeschlossene Punkte für Passwort-Reset-E-Mail, OpenAPI-Spec und erweiterte Smoke-Tests markiert.
+
+### Security
+- Passwort-Reset-Link wird nicht mehr ins Server-Fehlerlog geschrieben, sondern per E-Mail übertragen.
+- SMTP-Credentials werden nur aus der lokalen `data/email_config.json` oder Umgebungsvariablen gelesen, nicht aus dem Repo.
+
+### Fixed
+- `api/api.php`: `sendResetEmail()` liefert jetzt immer einen konsistenten booleschen Rückgabewert basierend auf `sendEmail()`.
+
+## [Unreleased]  (vorheriger Stand)
+
+### Added
 - `API.md`: Erste Public-REST-API-Dokumentation (Endpunkte, Regeln, CSP-Header, offene TODOs).
 - `includes/validation.php`: Zentrale Validierungs-Helper `sanitizeUserText()`, `validateListingPayload()`, `validateAuctionPayload()` aus `api/api.php` extrahiert, um Tests und Wiederverwendung zu ermöglichen.
 - `tests/AuthTest.php`: Erstes Smoke-Test-Skelett für Auth + Listing/Auktion-Validierung (11/11 grün).

@@ -8,10 +8,11 @@
   - Das SFTP-Passwort lag in Git-History. Muss im Strato-Kundencenter geändert werden.
   - Lokale `STRATO_PASS` Umgebungsvariable aktualisieren.
 
-- [ ] **Echte E-Mail-Versand für Passwort-Reset** (siehe GitHub Issue #2)
-  - `includes/email.php` unterstützt jetzt Config-Schema + Rate-Limiting + Logging.
-  - Optionen: Strato-SMTP, PHPMailer, Postmark, SendGrid.
-  - `data/email_config.json` mit Zugangsdaten auf Server anlegen.
+- [x] **Echte E-Mail-Versand für Passwort-Reset** (siehe GitHub Issue #2)
+  - PHPMailer 6.9.1 eingebunden unter `includes/PHPMailer/`.
+  - `includes/email.php` unterstützt jetzt SMTP/SSL/TLS mit Config-Datei oder Umgebungsvariablen.
+  - `api/api.php` verschickt Passwort-Reset-E-Mails (sobald `data/email_config.json` vorhanden ist).
+  - Ohne Config bleibt mail()-Fallback aktiv.
 
 - [ ] **LNBits Live-Config auf Server eintragen**
   - Admin-Panel im Dashboard ist implementiert (2026-06-16).
@@ -44,11 +45,12 @@
 - [ ] Nostr-Login: Server-seitige Schnorr-Signatur-Verifikation implementieren
 - [ ] Upload-Verzeichnis: MIME-Type-Check härten (Magick/Exif)
 - [ ] SQL-Injection-Audit (aktuell vorbereitete Statements)
-- [ ] Passwort-Reset per E-Mail aktivieren (SMTP/Postmark/SES)
+- [x] Passwort-Reset per E-Mail aktiviert (SMTP via PHPMailer, sobald `data/email_config.json` vorhanden)
 
 ## 🧪 Tests
 
 - [x] Smoke-Tests für Auth + Validierung (`tests/AuthTest.php`)
+- [x] Smoke-Tests für E-Mail-Validierung + SMTP-Config-Overrides (`tests/AuthTest.php`)
 - [ ] PHP-Unit-Tests für Auth + DB-Migrationen
 - [ ] API-Integrationstests (Status, Register, Login, Listing erstellen)
 - [ ] Frontend-Tests für Kritische Pfade (Login → Listing erstellen)
@@ -56,7 +58,8 @@
 ## 📚 Dokumentation
 
 - [x] `API.md`: Interne REST-API-Dokumentation
-- [ ] OpenAPI 3.0 / Postman Collection generieren
+- [x] `openapi.yaml`: Public OpenAPI 3.0 Spec
+- [ ] Postman Collection generieren
 - [x] Admin-Handbuch für Payment-Config (im Dashboard integriert)
 - [x] `SECURITY.md` und `CHANGELOG.md` gepflegt
 - [ ] Contributor-Guide

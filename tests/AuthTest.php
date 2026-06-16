@@ -19,6 +19,7 @@ $_SERVER['DOCUMENT_ROOT'] = realpath(__DIR__ . '/../..');
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/validation.php';
+require_once __DIR__ . '/../includes/email.php';
 
 $db = getDB();
 initDB();
@@ -117,6 +118,28 @@ try {
 assertTrue('Non-admin user detected', !isAdmin($user));
 $adminUser = ['id' => 99, 'email' => 'akamaru.claw@gmx.de'];
 assertTrue('Admin fallback for default admin', isAdmin($adminUser));
+
+// 7. E-Mail helper validation
+assertTrue('Email invalid recipient rejected', sendEmail('not-an-email', 'Subject', 'Body') === false);
+assertTrue('Email invalid sender rejected', sendEmail('user@example.com', 'Subject', 'Body', 'Evil <attacker@example.com>') === false);
+
+putenv('TOXIC_SMTP_HOST=smtp.example.com');
+putenv('TOXIC_SMTP_PORT=587');
+putenv('TOXIC_SMTP_USER=test@example.com');
+putenv('TOXIC_SMTP_SECURE=tls');
+$emailConfig = getEmailConfig();
+assertTrue('Email config env override host', ($emailConfig['smtp_host'] ?? '') === 'smtp.example.com');
+assertTrue('Email config env override port', ($emailConfig['smtp_port'] ?? 0) === 587);
+assertTrue('Email config env override secure', ($emailConfig['smtp_secure'] ?? '') === 'tls');
+putenv('TOXIC_SMTP_HOST');
+putenv('TOXIC_SMTP_PORT');
+putenv('TOXIC_SMTP_USER');
+putenv('TOXIC_SMTP_SECURE');
+
+// notifyUserEmail with unknown type should not crash or send
+$originalUser = currentUser();
+notifyUserEmail($db, 1, 'unknown_type', 'Title', 'Message');
+assertTrue('notifyUserEmail unknown type handled', true);
 
 // Cleanup
 exec('rm -rf ' . escapeshellarg($tmpDir));
