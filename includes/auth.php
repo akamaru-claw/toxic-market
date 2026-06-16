@@ -47,23 +47,14 @@ function loginWithEmail(string $email, string $password): ?array {
 }
 
 function loginWithNostr(string $pubkey): ?array {
-    $db = getDB();
-    $stmt = $db->prepare('SELECT * FROM users WHERE nostr_pubkey = ?');
-    $stmt->execute([$pubkey]);
-    $user = $stmt->fetch();
-    
-    if (!$user) {
-        $stmt = $db->prepare('INSERT INTO users (nostr_pubkey, display_name) VALUES (?, ?)');
-        $stmt->execute([$pubkey, 'nostr_' . substr($pubkey, 0, 8)]);
-        $userId = $db->lastInsertId();
-        $stmt = $db->prepare('SELECT * FROM users WHERE id = ?');
-        $stmt->execute([$userId]);
-        $user = $stmt->fetch();
-    }
-    
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['auth_method'] = 'nostr';
-    return $user;
+    // SECURITY: Nostr login currently disabled because no Schnorr signature verification is available server-side.
+    // Without signature verification, anyone knowing a pubkey can take over the account.
+    // TODO: implement challenge-response with verified BIP-340 Schnorr signature before re-enabling.
+    return null;
+}
+
+function nostrLoginDisabled(): bool {
+    return true;
 }
 
 function registerWithEmail(string $email, string $password, string $displayName): ?array {

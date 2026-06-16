@@ -3,9 +3,10 @@
  * Toxic Market — API Endpoints
  */
 
-error_reporting(E_ALL);
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
+ini_set('error_log', $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/data/error.log');
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -111,7 +112,10 @@ try {
             $csrf = $data['csrf_token'] ?? '';
             
             if (isset($data['nostr_pubkey'])) {
-                $user = loginWithNostr($data['nostr_pubkey']);
+                // Nostr login is disabled until server-side Schnorr signature verification is implemented.
+                http_response_code(503);
+                echo json_encode(['success' => false, 'error' => 'Nostr-Login ist vorübergehend deaktiviert. Bitte nutze E-Mail/Passwort.']);
+                break;
             } else {
                 if (!verifyCSRF($csrf)) throw new Exception('Invalid CSRF token', 403);
                 $email = $data['email'] ?? '';
