@@ -6,7 +6,22 @@
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/toxic-market/includes/db.php';
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    // Harden session cookies before starting the session.
+    // Secure flag only when HTTPS is actually used; on plain HTTP it would drop the cookie.
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+
+    session_set_cookie_params([
+        'lifetime' => 86400 * 30, // 30 days
+        'path' => '/toxic-market/',
+        'domain' => '',
+        'secure' => $isHttps,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
 
 define('SESSION_DURATION', 86400 * 30); // 30 days
 
@@ -54,6 +69,11 @@ function loginWithEmail(string $email, string $password): ?array {
         return null;
     }
     
+    // Regenerate session ID on successful login to prevent session fixation.
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_regenerate_id(true);
+    }
+
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['auth_method'] = 'email';
     return $user;
@@ -85,7 +105,12 @@ function registerWithEmail(string $email, string $password, string $displayName)
     $stmt = $db->prepare('SELECT * FROM users WHERE id = ?');
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
-    
+
+    // Regenerate session ID on successful registration to prevent session fixation.
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_regenerate_id(true);
+    }
+
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['auth_method'] = 'email';
     return $user;
@@ -93,7 +118,40 @@ function registerWithEmail(string $email, string $password, string $displayName)
 
 function logout(): void {
     $_SESSION = [];
-    session_destroy();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_regenerate_id(true);
+        session_destroy();
+    }
+    // Best-effort deletion of the session cookie on the client.
+    if (isset($_COOKIE[session_name()])) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            [
+                'expires' => time() - 3600,
+                'path' => $params['path'] ?? '/toxic-market/',
+                'domain' => $params['domain'] ?? '',
+                'secure' => $params['secure'] ?? false,
+                'httponly' => $params['httponly'] ?? true,
+                'samesite' => $params['samesite'] ?? 'Lax',
+            ]
+        );
+    }
+}
+
+/**
+ * Return basic session metadata for diagnostics (admin-only).
+ * Does NOT expose the session ID or secrets.
+ */
+function sessionSecurityInfo(): array {
+    $params = session_get_cookie_params();
+    return [
+        'httponly' => !empty($params['httponly']),
+        'secure' => !empty($params['secure']),
+        'samesite' => $params['samesite'] ?? 'Not set',
+        'cookie_path' => $params['path'] ?? '/',
+    ];
 }
 
 function generateResetToken(string $email): ?string {

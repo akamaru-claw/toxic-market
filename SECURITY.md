@@ -9,7 +9,7 @@ Wenn du eine Sicherheitslücke findest, melde sie bitte direkt an den Projekteig
 - **Passwort-Hashing**: `password_hash()` mit Bcrypt, cost 12.
 - **Passwort-Richtlinie**: Mindestens 8 Zeichen (Client- und Server-seitig geprüft). Empfohlen werden Buchstaben, Zahlen und Sonderzeichen.
 - **CSRF**: Alle schreibenden API-Endpunkte fordern einen `csrf_token` aus der Session.
-- **Sessions**: 30-Tage-Cookie. `HttpOnly`/`Secure`/`SameSite=Lax` sollte auf Serverebene (Apache/Nginx) gesetzt werden.
+- **Sessions**: 30-Tage-Cookie. `HttpOnly`/`Secure` (nur bei HTTPS)/`SameSite=Lax` werden serverseitig via `session_set_cookie_params()` gesetzt. Session-ID wird bei Login, Registrierung und Logout neu generiert, um Session-Fixation zu verhindern.
 - **Rate Limiting**: IP-basierte Limits für Login (10 Versuche / 15 min), Registrierung (5 / 15 min) und Passwort-Reset (3 / 15 min).
 - **SQL Injection**: Alle DB-Queries nutzen prepared statements.
 - **XSS**: Ausgaben werden mit `htmlspecialchars()` escaped.
@@ -33,6 +33,7 @@ Wenn du eine Sicherheitslücke findest, melde sie bitte direkt an den Projekteig
 - Keine 2FA. Wird evaluiert, sobald Nostr-Login wieder aktiviert wird.
 - Dateiuploads: keine Viren- oder Bild-Manipulations-Validierung außer MIME-Typ und Größe.
 - CSP erlaubt aktuell `'unsafe-inline'` für Scripts/Styles, weil Teile des Frontends inline JS/CSS nutzen. Sobald alles extern ausgelagert ist, kann `unsafe-inline` entfernt werden.
+- CSRF-Schutz ist für API-Endpunkte aktiv; HTML-Formulare (create.php, create-auction.php) senden noch kein CSRF-Token.
 
 ## Betriebssicherheit
 

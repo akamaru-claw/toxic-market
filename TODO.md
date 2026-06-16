@@ -41,11 +41,13 @@
 - [x] Passwort-Mindestlänge auf 8 Zeichen erhöht (`api/api.php`, `includes/auth.php`, `public/js/toxic.js`)
 - [x] Serverseitige Eingabevalidierung für `create_listing` und `create_auction` (Preis, Bild-URLs, Karten-ID, Versand)
 - [x] Content-Security-Policy, XSS-Protection, HSTS, X-Frame-Options, Referrer-Policy in `.htaccess` und API-Responses
+- [x] Session-Cookie-Flags (`HttpOnly`, `Secure`, `SameSite=Lax`) serverseitig forcieren
+- [x] `session_regenerate_id(true)` bei Login/Register/Logout gegen Session-Fixation
 - [ ] Nostr-Login: Server-seitige Schnorr-Signatur-Verifikation implementieren
 - [ ] CSRF-Token auf jeder POST-Seite prüfen (aktuell nur API)
 - [ ] Upload-Verzeichnis: MIME-Type-Check härten (Magick/Exif)
 - [ ] SQL-Injection-Audit (aktuell vorbereitete Statements)
-- [ ] Session-Cookie-Flags (`HttpOnly`, `Secure`, `SameSite=Lax`) serverseitig forcieren
+- [ ] Passwort-Reset per E-Mail aktivieren (SMTP/Postmark/SES)
 
 ## 🧪 Tests
 

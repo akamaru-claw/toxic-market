@@ -5,6 +5,9 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 ## [Unreleased]
 
 ### Security
+- Session-Cookies werden mit `HttpOnly`, `SameSite=Lax` und bedingt `Secure` (bei HTTPS) gesetzt (`includes/auth.php`).
+- `session_regenerate_id(true)` bei Login, Registrierung und Logout gegen Session-Fixation.
+- Logout löscht das Session-Cookie auch clientseitig.
 - IP-basiertes Rate-Limiting für Login, Registrierung und Passwort-Reset (`includes/rate_limit.php`).
 - Passwort-Reset-Endpunkt gibt keinen `debug_email_sent`-Flag mehr an den Client zurück.
 - Rate-Limit-Fehler geben `Retry-After` mit zurück.
@@ -20,6 +23,7 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 - LNBits-Verbindungstest (`api/api.php?action=lnbits_test`) für Admins.
 - `isAdmin()`-Helper in `includes/auth.php`.
 - Validierungs-Helper `sanitizeUserText()`, `validateListingPayload()`, `validateAuctionPayload()` in `api/api.php`.
+- `sessionSecurityInfo()`-Helper für diagnostische Cookie-Flags (keine Geheimnisse).
 
 ### Changed
 - Alle Root-PHP-Seiten erhalten die gleichen PWA/Mobile-Meta-Tags wie `public/` (cache-busting `?v=2`, `viewport-fit=cover`, theme-color).
@@ -29,6 +33,7 @@ Alle nennenswerten Änderungen werden in dieser Datei dokumentiert.
 - Synchronisation von Mobile-Viewport-Änderungen zwischen `public/` und Root-PHP-Dateien.
 - `index.html` fehlte im Repo-Root; `public/index.html` wurde ins Root kopiert, damit `.htaccess` SPA-Routing funktioniert.
 - `create_auction` speichert nun zusätzlich `reserve_price_sats` und nutzt validierte Start-/Endzeiten.
+- Session-Cookies erhielten keine Flags (`HttpOnly`/`Secure`/`SameSite`) und waren dadurch anfälliger für XSS/CSRF-Leakage.
 
 ## [v0.1.0] — 2026-06-15
 
